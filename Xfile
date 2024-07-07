@@ -224,9 +224,12 @@ function test_xfile { ## Test Xfile implementation (arguments handling)
   local test_logs=(
     "$(task test_args_parsing -l VERSION="42  20" --word 'word' -f -t "Text with  3   words and spaces" BETA_NUMBER='beta')"
     "$(task test_args_parsing -l -f -w 'word' -t "Text with  3   words and spaces" BETA_NUMBER='beta' VERSION="42  20")"
+    "$(task test_args_parsing -lf -w 'word' -t "Text with  3   words and spaces" BETA_NUMBER='beta' VERSION="42  20")"
     "$(task test_args_parsing --local --word 'word' --force -t "Text with  3   words and spaces" BETA_NUMBER='beta' VERSION="42  20")"
     "$(task test_args_parsing BETA_NUMBER=beta --local --word 'word' --force --text "Text with  3   words and spaces" VERSION="42  20")"
-    "$(task test_read_arr -a "first second")"
+    "$(task test_read_arr -a 'first second' ' ')"
+    "$(task test_read_arr -a 'first:second' :)"
+    "$(task test_read_arr -a 'first second')"
     "$(task test_task_in_context --text "two words" -f VERSION="42  20")"
     "$(task test_task_in_context VERSION="42  20" -t "two words" --force)"
   )
@@ -245,22 +248,23 @@ function test_xfile { ## Test Xfile implementation (arguments handling)
 }
 
 function test_read_arr {
-  read_arr "-a" "myarray"
+  read_arr -a myarray "$3"
 
   local has_problems=false
-  if [ "${myarray[0]}" != "first" ]; then
+
+  if [ "${myarray[0]}" != first ]; then
     log_error "Missing first array element!"
     has_problems=true
   fi
-  if [ "${myarray[1]}" != "second" ]; then
+  if [ "${myarray[1]}" != second ]; then
     log_error "Missing second array element!"
     has_problems=true
   fi
 
   if [ "$has_problems" = true ]; then
-    log_error "Some assertions have failed, see log above"
     return 3
   fi
+
   log_success "Array parsed as expected!"
 }
 
@@ -290,7 +294,6 @@ function __task_in_context {
   fi
 
   if [ "$has_problems" = true ]; then
-    log_error "Some assertions have failed, see log above"
     return 3
   fi
 
@@ -335,7 +338,6 @@ function test_args_parsing {
   fi
 
   if [ "$has_problems" = true ]; then
-    log_error "Some assertions have failed, see log above"
     return 3
   fi
 

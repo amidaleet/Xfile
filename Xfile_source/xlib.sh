@@ -27,50 +27,46 @@ log_success() {
 declare -a _INPUT_ARR
 
 # Parse input to args that looks like:
-# name='string   value'
+#
+# name='Large string argument'
 # --name value
+# -name value
 # --flag
-# -flag
+# -f
+# positional value
 function cache_args {
   local param=''
   local word
-  local param
 
-  for word in "$@"; do
-    if [[ "$word" =~ ^(-|--).*$ ]]; then
-      # is flag (-f || --flag)
-      if [[ -n $param ]]; then
-        _INPUT_ARR+=("$param")
+  save_previous_arg() {
+    if [ -n "$param" ]; then
+      _INPUT_ARR+=("$param")
+    fi
+  }
+
+  for word in "${@:2}"; do
+    if [[ "$word" =~ ^(-|--).*$ ]]; then # flag or opt name (-a || --arg)
+      save_previous_arg
+      param=$word
+      continue
+    fi
+
+    if [[ "$word" =~ ^[a-zA-Z0-9_]+=.*$ ]]; then # named arg (ARG=value)
+      save_previous_arg
+      param=$word
+      continue
+    fi
+
+    if [[ "$param" =~ ^(-|--).*$ ]]; then # opt value
+        _INPUT_ARR+=("$param=$word")
         param=''
-      fi
-      param=$word
-      continue
+        continue
     fi
 
-    if [[ "$word" =~ ^[a-zA-Z0-9_]+=.*$ ]]; then
-      # is named param head (ARG=head_of_val)
-      if [[ -n $param ]]; then
-        _INPUT_ARR+=("$param")
-      fi
-      param=$word
-      continue
-    fi
-
-    if [[ -n $param ]]; then
-      if [[ "$param" =~ ^(-|--)[a-zA-Z0-9_]+$ ]]; then
-        # opt flag (-a || --argument)
-        param+="=$word"
-      else
-        param+=" $word"
-      fi
-    else
-      _INPUT_ARR+=("$word")
-    fi
+    _INPUT_ARR+=("$word") # simple/positional value
   done
 
-  if [[ -n $param ]]; then
-    _INPUT_ARR+=("$param")
-  fi
+  save_previous_arg
 }
 
 # Makefile style 'ARG=VALUE' arguments parser
@@ -85,8 +81,8 @@ function read_args {
   for name in "$@"; do
     for argument in "${_INPUT_ARR[@]}"; do
       if [[ $argument == "$name="* ]]; then
-        IFS='=' read -r -a array <<<"$argument"
-        eval "${array[0]}=\"${array[1]}\""
+        argument="${argument/"$name="/}"
+        eval "$name='$argument'"
         continue 2 # name loop
       fi
     done
@@ -98,35 +94,41 @@ function read_args {
 # $1 – flag name, formart -f | --flag
 # $2 – var name
 function read_opt {
-  local opt_name="$1"
-  local var_name="$2"
+  local opt_name=$1
+  local var_name=$2
   local argument
 
   for argument in "${_INPUT_ARR[@]}"; do
     if [[ $argument == "$opt_name="* ]]; then
-      IFS='=' read -r -a array <<<"$argument"
-      eval "${var_name}=\"${array[1]}\""
+      argument="${argument/"$opt_name="/}"
+      eval "$var_name='$argument'"
       return 0
     fi
   done
 }
 
-# Parse bash array form space-separated string arg: (-|--)<flag> "<element0> <element1>"
+# Parse bash array form string arg: (-|--)<flag> "<element0> <element1>"
 #
 # $1 – flag name, formart -f | --flag
 # $2 – var name
+# $3 – separator symbol (to use as IFS)
 function read_arr {
-  local opt_name="$1"
-  local var_name="$2"
+  local opt_name=$1
+  local arr_name=$2
+  local separator=$3
   local argument
 
   for argument in "${_INPUT_ARR[@]}"; do
     if [[ $argument == "$opt_name="* ]]; then
-      IFS='=' read -r -a array <<<"$argument"
-      eval "${var_name}=( ${array[1]} )"
+      argument="${argument/"$opt_name="/}"
+      str_to_arr "$argument" "$arr_name" "$separator"
       return 0
     fi
   done
+}
+
+function str_to_arr {
+  IFS="${3:-' '}" read -r -a "$2" <<<"$1"
 }
 
 # Is -f | --flag has been passed in script call?
@@ -140,16 +142,27 @@ function read_flags {
   local argument
   local name
 
-  for argument in "${_INPUT_ARR[@]}"; do
-    for name in "$@"; do
-      if [[ $argument == "$name" ]]; then
-        echo "true"
+  for name in "$@"; do
+    for argument in "${_INPUT_ARR[@]}"; do
+      if [ "$argument" = "$name" ]; then
+        echo true
         return 0
       fi
     done
   done
 
-  echo "false"
+  for name in "$@"; do
+    if [[ "$name" =~ ^-[a-zA-Z] ]]; then
+      for argument in "${_INPUT_ARR[@]}"; do
+        if [[ $argument =~ ^-[a-zA-Z]*"${name/-/}"[a-zA-Z]* ]]; then
+          echo true
+          return 0
+        fi
+      done
+    fi
+  done
+
+  echo false
 }
 
 # Is var with provided name defined in scrip scoupe?
@@ -162,27 +175,24 @@ function read_flags {
 function is_defined {
   local var_name="$1"
   if [[ -z "${!var_name}" ]]; then
-    echo "false"
+    echo false
   else
-    echo "true"
+    echo true
   fi
 }
 
 function assert_defined {
-  declare -a missing
+  local has_missing=false
   local var_name
 
   for var_name in "$@"; do
     if [[ -z "${!var_name}" ]]; then
-      missing+=("$var_name")
+      log_error "Missing required param: $var_name"
+      has_missing=true
     fi
   done
 
-  for var_name in "${missing[@]}"; do
-    log_error "Missing required param: $var_name"
-  done
-
-  if [[ ! "${#missing[@]}" -eq 0 ]]; then
+  if [ "$has_missing" = true ]; then
     exit 1
   fi
 }
