@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 set -eo pipefail
 
@@ -24,6 +24,10 @@ GIT_HOOKS_DIR="$TOOLS_DIR/hooks"
 
 function pg { ## Playground for Xfile development
   true
+}
+
+function bash_version { ## log bash version (which runs Xfile)
+  log "$BASH_VERSION"
 }
 
 # ---------- Setup ----------
@@ -76,7 +80,7 @@ function install_homebrew_deps { ## Install OS dependencies
   )
 
   local action='install (if missing)'
-  if [ $(read_flags "--upgrade") = false ]; then
+  if [ $(read_flags --upgrade) = false ]; then
     export HOMEBREW_NO_INSTALL_UPGRADE=true
     export HOMEBREW_NO_AUTO_UPDATE=true
     action='install & upgrade'
@@ -132,22 +136,22 @@ function set_xcode_header { ## Set org Xcode header template in user directory
 # https://blog.kulman.sk/faster-way-to-download-and-install-xcode/
 ## VERSION="" BETA_NUMBER="" COOKIE="" --skip-load --skip-move-archive --skip-unpack --skip-move-app --skip-remove-archive
 function install_xcode { ## Install Xcode of specified version
-  read_args "VERSION" "BETA_NUMBER" "COOKIE"
-  assert_defined "VERSION" "COOKIE" "SUDO_PASS"
+  read_args VERSION BETA_NUMBER COOKIE
+  assert_defined VERSION COOKIE SUDO_PASS
 
-  if [ $(read_flags "--skip-load") = true ]; then
+  if [ $(read_flags --skip-load) = true ]; then
     export SKIP_LOAD=true
   fi
-  if [ $(read_flags "--skip-move-archive") = true ]; then
+  if [ $(read_flags --skip-move-archive) = true ]; then
     export SKIP_MOVE_ARCHIVE=true
   fi
-  if [ $(read_flags "--skip-unpack") = true ]; then
+  if [ $(read_flags --skip-unpack) = true ]; then
     export SKIP_UNPACK=true
   fi
-  if [ $(read_flags "--skip-move-app") = true ]; then
+  if [ $(read_flags --skip-move-app) = true ]; then
     export SKIP_MOVE_APP=true
   fi
-  if [ $(read_flags "--skip-remove-archive") = true ]; then
+  if [ $(read_flags --skip-remove-archive) = true ]; then
     export SKIP_REMOVE_ARCHIVE=true
   fi
 
@@ -158,8 +162,8 @@ function install_xcode { ## Install Xcode of specified version
 
 ## VERSION="" COOKIE=""
 function install_ios_runtime { ## Install simctl runtime
-  read_args "VERSION" "COOKIE"
-  assert_defined "VERSION" "COOKIE"
+  read_args VERSION COOKIE
+  assert_defined VERSION COOKIE
 
   "$SCRIPTS_FOLDER/install_ios_runtime.sh" -v "$VERSION" -c "$COOKIE"
 }
@@ -227,9 +231,13 @@ function test_xfile { ## Test Xfile implementation (arguments handling)
     "$(task test_args_parsing -lf -w 'word' -t "Text with  3   words and spaces" BETA_NUMBER='beta' VERSION="42  20")"
     "$(task test_args_parsing --local --word 'word' --force -t "Text with  3   words and spaces" BETA_NUMBER='beta' VERSION="42  20")"
     "$(task test_args_parsing BETA_NUMBER=beta --local --word 'word' --force --text "Text with  3   words and spaces" VERSION="42  20")"
-    "$(task test_read_arr -a 'first second' ' ')"
-    "$(task test_read_arr -a 'first:second' :)"
     "$(task test_read_arr -a 'first second')"
+    "$(task test_read_arr -a 'first:second' :)"
+    "$(task test_read_arr -a 'first second' ' ')"
+    "$(task test_read_arr -a $'first\nsecond' '\n')"
+    "$(task test_read_arr -a '   first   second   ' ' ')"
+    "$(task test_read_arr -a '::first:second' :)"
+    "$(task test_read_arr -a $'\nfirst\nsecond\n' '\n')"
     "$(task test_task_in_context --text "two words" -f VERSION="42  20")"
     "$(task test_task_in_context VERSION="42  20" -t "two words" --force)"
   )
@@ -252,12 +260,16 @@ function test_read_arr {
 
   local has_problems=false
 
+  if [ ! "${#myarray[@]}" -eq 2 ]; then
+    log_error "Got ${#myarray[@]} elements instead of 2. Delimiter is $3"
+    has_problems=true
+  fi
   if [ "${myarray[0]}" != first ]; then
-    log_error "Missing first array element!"
+    log_error "Missing first array element! Delimiter is $3"
     has_problems=true
   fi
   if [ "${myarray[1]}" != second ]; then
-    log_error "Missing second array element!"
+    log_error "Missing second array element! Delimiter is $3"
     has_problems=true
   fi
 
@@ -273,12 +285,12 @@ function test_task_in_context {
 }
 
 function __task_in_context {
-  read_opt "-t" "TEXT" && read_opt "--text" "TEXT"
-  read_args "VERSION"
+  read_opt -t TEXT && read_opt --text TEXT
+  read_args VERSION
 
   local has_problems=false
 
-  if [ $(read_flags "--force" "-f") = false ]; then
+  if [ $(read_flags --force -f) = false ]; then
     log_error "Missing expected --force -f flag!"
     has_problems=true
   fi
@@ -301,18 +313,18 @@ function __task_in_context {
 }
 
 function test_args_parsing {
-  read_opt "-w" "WORD" && read_opt "--word" "WORD"
-  read_opt "-t" "TEXT" && read_opt "--text" "TEXT"
-  read_args "VERSION" "BETA_NUMBER"
+  read_opt -w WORD && read_opt --word WORD
+  read_opt -t TEXT && read_opt --text TEXT
+  read_args VERSION BETA_NUMBER
 
   local has_problems=false
 
-  if [ $(read_flags "--force" "-f") = false ]; then
+  if [ $(read_flags --force -f) = false ]; then
     log_error "Missing expected --force -f flag!"
     has_problems=true
   fi
 
-  if [ $(read_flags "--local" "-l") = false ]; then
+  if [ $(read_flags --local -l) = false ]; then
     log_error "Missing expected --local -l flag!"
     has_problems=true
   fi
@@ -406,8 +418,8 @@ function lint_ruby { ## Lint all Ruby files
 
 ## --name
 function jenkins_job_get_script { ## GET request, loads config.xml for Jenkins Job
-  read_opt "--name" "job_name"
-  assert_defined "job_name" "jenkins_creds"
+  read_opt --name job_name
+  assert_defined job_name jenkins_creds
 
   log_info "Loading script for $job_name"
 
@@ -422,8 +434,8 @@ function jenkins_job_get_script { ## GET request, loads config.xml for Jenkins J
 
 ## --name
 function jenkins_job_post_script { ## POST request, updates config.xml for Jenkins Job
-  read_opt "--name" "job_name"
-  assert_defined "job_name" "jenkins_creds"
+  read_opt --name job_name
+  assert_defined job_name jenkins_creds
 
   log_info "Updating script for $job_name"
 
@@ -441,9 +453,9 @@ function jenkins_job_post_script { ## POST request, updates config.xml for Jenki
 
 ## --local --remote
 function jenkins_job_pull { ## Load Jenkins Job config, replace local repo script with loaded one
-  read_opt "--local" "job_source_file_name"
-  read_opt "--remote" "job_remote_name"
-  assert_defined "job_source_file_name" "job_remote_name"
+  read_opt --local job_source_file_name
+  read_opt --remote job_remote_name
+  assert_defined job_source_file_name job_remote_name
 
   log_info "Pulling script from server job $job_remote_name to $job_source_file_name.groovy"
 
@@ -456,9 +468,9 @@ function jenkins_job_pull { ## Load Jenkins Job config, replace local repo scrip
 
 ## --local --remote
 function jenkins_job_push { ## Load Jenkins Job config, replace script with repo version, send back
-  read_opt "--local" "job_source_file_name"
-  read_opt "--remote" "job_remote_name"
-  assert_defined "job_source_file_name" "job_remote_name"
+  read_opt --local job_source_file_name
+  read_opt --remote job_remote_name
+  assert_defined job_source_file_name job_remote_name
 
   log_info "Pushing script from $job_source_file_name.groovy to server job $job_remote_name"
 
@@ -485,9 +497,9 @@ function jenkins_job_sync { ## Update Jobs code in repo <-> server
   rm -rf "$X_JENKINS_JOB_CONFIGS_DIR"
   mkdir -p "$X_JENKINS_JOB_CONFIGS_DIR"
 
-  if [ $(read_flags "--to_remote") = true ]; then
+  if [ $(read_flags --to_remote) = true ]; then
     local cmd="jenkins_job_push"
-  elif [ $(read_flags "--to_local") = true ]; then
+  elif [ $(read_flags --to_local) = true ]; then
     local cmd="jenkins_job_pull"
   else
     log_error "Missing required destination arg!"
@@ -543,7 +555,7 @@ function ff { ## fast-forward reset branch
   local BRANCH=${1-main}
 
   if [[ -n $(git status --porcelain) ]]; then
-    if [ $(read_flags "--force" "-f") = true ]; then
+    if [ $(read_flags --force -f) = true ]; then
       log "Force flag used, will reset all changes"
     else
       log_warn "Uncommitted changes, use --force flag to reset them"
@@ -559,11 +571,11 @@ function ff { ## fast-forward reset branch
 
 ## --ticket --index --cherry-pick --surname
 function feature { ## create feature branch
-  read_opt "-s" "SURNAME" && read_opt "--surname" "SURNAME"
-  read_opt "-t" "TICKET" && read_opt "--ticket" "TICKET"
-  read_opt "-i" "INDEX" && read_opt "--index" "INDEX"
+  read_opt -s SURNAME && read_opt --surname SURNAME
+  read_opt -t TICKET && read_opt --ticket TICKET
+  read_opt -i INDEX && read_opt --index INDEX
   local SURNAME=${MY_SURNAME-$SURNAME}
-  assert_defined "TICKET"
+  assert_defined TICKET
 
   if [ -z "$SURNAME" ]; then
     log_error "Missing SURNAME value"
@@ -577,7 +589,7 @@ function feature { ## create feature branch
 
   local name="feature/$SURNAME/$TICKET/${INDEX-0}"
 
-  if [ $(read_flags "--cp" "--cherry-pick") = true ]; then
+  if [ $(read_flags --cp --cherry-pick) = true ]; then
     log "Got CP flag, adding postfix"
     name="$name-cp"
   fi
@@ -601,13 +613,13 @@ function git:move_forgotten_files_to_lfs { ## Move files to LFS if needed (conve
 
   log_info "Force filter files by LFS"
 
-  if [ $(read_flags "--staged" "-s") = true ]; then
+  if [ $(read_flags --staged -s) = true ]; then
     log_info "Filter staged files"
     files="$(git diff --diff-filter=d --name-only --cached | grep -E $regex || true)"
-  elif [ $(read_flags "--commited" "-c") = true ]; then
+  elif [ $(read_flags --commited -c) = true ]; then
     log_info "Filter files in last commit"
     files="$(git log --diff-filter=d --first-parent --name-only --oneline -n 1 | tail -n +2 | grep -E $regex || true)"
-  elif [ $(read_flags "--all" "-a") = true ]; then
+  elif [ $(read_flags --all -a) = true ]; then
     log_info "Filter all files"
     files=.
   else
@@ -631,7 +643,7 @@ function git:move_forgotten_files_to_lfs { ## Move files to LFS if needed (conve
 
 ## --lose-unstaged-changes
 function git:reset_retained_lfs_files { ## Fix LSF error: Encountered X file(s) that should have been pointers, but weren't:
-  if [ $(read_flags "--lose-unstaged-changes") != true ]; then
+  if [ $(read_flags --lose-unstaged-changes) != true ]; then
     log_warn "
     This call will remove all unstaged files!
 
@@ -662,10 +674,10 @@ function git:assert_no_snapshot_fail_artifacts { ## Assert no new | diff .png fi
 
   log_info "Checking for Snapshot diff/new .png files in stage"
 
-  if [ $(read_flags "--staged" "-s") = true ]; then
+  if [ $(read_flags --staged -s) = true ]; then
     log_info "Filter staged files"
     files="$(git diff --diff-filter=d --name-only --cached | grep -E $regex || true)"
-  elif [ $(read_flags "--commited" "-c") = true ]; then
+  elif [ $(read_flags --commited -c) = true ]; then
     log_info "Filter files in last commit"
     files="$(git log --diff-filter=d --first-parent --name-only --oneline -n 1 | tail -n +2 | grep -E $regex || true)"
   else
@@ -685,8 +697,42 @@ function git:assert_no_snapshot_fail_artifacts { ## Assert no new | diff .png fi
 }
 
 ## --fetch
+function git:delete_merged_features { ## Delete branches without upstream in origin (PR must be merged)
+  if [ $(read_flags --fetch) = true ]; then
+    log_info 'Fetching branches, pruning ones that been removed from remote'
+    git fetch origin --prune
+  fi
+
+  local merged_features
+  local str
+  local count
+
+  str="$(\
+    git for-each-ref --format '%(refname) %(upstream:track)' refs/heads \
+    | grep feature/ \
+    | awk '$2 == "[gone]" {sub("refs/heads/", "", $1); print $1}' \
+    )"
+
+  str_to_arr "$str" merged_features '\n'
+
+  count="${#merged_features[@]}"
+
+  if [ "$count" -eq 0 ]; then
+    log_success 'Merged features not found'
+    return 0
+  fi
+
+  log_info 'Found merged features:'
+  log "${merged_features[@]}"
+
+  git branch -D "${merged_features[@]}"
+
+  log_success "Removed $count branches"
+}
+
+## --fetch
 function git:clean_remote { ## Remove too old and merged branches from origin
-  if [[ $(read_flags "--fetch" "-f") = true ]]; then
+  if [[ $(read_flags --fetch -f) = true ]]; then
     log_info "💿 Fetching remote with --prune ..."
     git fetch --prune
   fi
@@ -726,10 +772,10 @@ function git:clean_remote { ## Remove too old and merged branches from origin
 
 ## --fetch --remote --local --wildcard
 function git:delete_branches { ## Remove branches by wildcard
-  read_opt "-w" "WILDCARD" && read_opt "--wildcard" "WILDCARD"
-  assert_defined "WILDCARD"
+  read_opt -w WILDCARD && read_opt --wildcard WILDCARD
+  assert_defined WILDCARD
 
-  if [[ $(read_flags "--fetch" "-f") = true ]]; then
+  if [[ $(read_flags --fetch -f) = true ]]; then
     log_info "💿 Fetching remote with --prune ..."
     git fetch --prune
   fi
@@ -749,12 +795,12 @@ function git:delete_branches { ## Remove branches by wildcard
     log_warn "Found no branches to delete!"
   fi
 
-  if [[ $(read_flags "--remote" "-r") = true ]]; then
+  if [[ $(read_flags --remote -r) = true ]]; then
     log_info "🗑️  Removing remote branches"
     git push origin -d "${branchArr[@]}"
   fi
 
-  if [[ $(read_flags "--local" "-l") = true ]]; then
+  if [[ $(read_flags --local -l) = true ]]; then
     log_info "🗑️  Removing local branches"
     git branch -d "${branchArr[@]}"
   fi
@@ -764,10 +810,10 @@ function git:delete_branches { ## Remove branches by wildcard
 
 ## --fetch --remote --local --wildcard
 function git:delete_tags { ## Remove tags by wildcard
-  read_opt "-w" "WILDCARD" && read_opt "--wildcard" "WILDCARD"
-  assert_defined "WILDCARD"
+  read_opt -w WILDCARD && read_opt --wildcard WILDCARD
+  assert_defined WILDCARD
 
-  if [[ $(read_flags "--fetch" "-f") = true ]]; then
+  if [[ $(read_flags --fetch -f) = true ]]; then
     log_info "💿 Fetching remote with --tags ..."
     git fetch --tags --prune
   fi
@@ -787,7 +833,7 @@ function git:delete_tags { ## Remove tags by wildcard
     log_warn "Found no tags to delete!"
   fi
 
-  if [[ $(read_flags "--remote" "-r") = true ]]; then
+  if [[ $(read_flags --remote -r) = true ]]; then
     log_info "🗑️  Removing remote tags"
     declare -a refsArr
     for tag in ${tagsArr[@]}; do
@@ -796,7 +842,7 @@ function git:delete_tags { ## Remove tags by wildcard
     git push -d origin "${refsArr[@]}"
   fi
 
-  if [[ $(read_flags "--local" "-l") = true ]]; then
+  if [[ $(read_flags --local -l) = true ]]; then
     log_info "🗑️  Removing local tags"
     git tag -d "${tagsArr[@]}"
   fi
@@ -806,10 +852,10 @@ function git:delete_tags { ## Remove tags by wildcard
 
 ## --branches --from --to
 function sync_branches { ## Sync listed branches between 2 remotes
-  read_opt "-b" "BRANCHES" && read_opt "--branches" "BRANCHES"
-  read_opt "--from" "FROM_REMOTE"
-  read_opt "--to" "TO_REMOTE"
-  assert_defined "BRANCHES" "FROM_REMOTE" "TO_REMOTE"
+  read_opt -b BRANCHES && read_opt --branches BRANCHES
+  read_opt --from FROM_REMOTE
+  read_opt --to TO_REMOTE
+  assert_defined BRANCHES FROM_REMOTE TO_REMOTE
 
   task sync_branches_fetch -b "$BRANCHES" --from "$FROM_REMOTE"
   task sync_branches_push -b "$BRANCHES" --to "$TO_REMOTE"
@@ -819,9 +865,9 @@ function sync_branches { ## Sync listed branches between 2 remotes
 
 ## --from --branches
 function sync_branches_fetch { ## fetch (+ LFS --all) listed branches from remote
-  read_opt "-b" "BRANCHES" && read_opt "--branches" "BRANCHES"
-  read_opt "--from" "FROM_REMOTE"
-  assert_defined "BRANCHES" "FROM_REMOTE"
+  read_opt -b BRANCHES && read_opt --branches BRANCHES
+  read_opt --from FROM_REMOTE
+  assert_defined BRANCHES FROM_REMOTE
 
   log_info "Will fetch '$BRANCHES' from '$FROM_REMOTE'"
 
@@ -847,9 +893,9 @@ function sync_branches_fetch { ## fetch (+ LFS --all) listed branches from remot
 
 ## --to --branches
 function sync_branches_push { ## push listed branches to remote
-  read_opt "-b" "BRANCHES" && read_opt "--branches" "BRANCHES"
-  read_opt "--to" "TO_REMOTE"
-  assert_defined "BRANCHES" "TO_REMOTE"
+  read_opt -b BRANCHES && read_opt --branches BRANCHES
+  read_opt --to TO_REMOTE
+  assert_defined BRANCHES TO_REMOTE
 
   log_info "Will push '$BRANCHES' to '$TO_REMOTE'"
 

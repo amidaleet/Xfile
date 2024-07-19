@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 log_blank_line() {
   echo
@@ -128,7 +128,25 @@ function read_arr {
 }
 
 function str_to_arr {
-  IFS="${3:-' '}" read -r -a "$2" <<<"$1"
+  local _ifs="${3:-' '}"
+
+  if [ "$_ifs" = '\n' ]; then
+    local line
+    eval "$2=()"
+    while IFS=$'\n' read -r line; do
+      if [ -z "$line" ]; then continue; fi
+      eval "$2+=( \"\$line\" )"
+    done <<< "$1"
+  else
+    local tmp
+    local el
+    IFS="$_ifs" read -r -a tmp <<<"$1"
+    eval "$2=()"
+    for el in "${tmp[@]}"; do
+      if [ -z "$el" ]; then continue; fi
+      eval "$2+=( \"\$el\" )"
+    done
+  fi
 }
 
 # Is -f | --flag has been passed in script call?
@@ -206,7 +224,7 @@ function assert_defined {
 # fi
 function dxToBool {
   local name="$1"
-  if [ "${!name}" = true ] || [ "${!name}" == 1 ]; then
+  if [ "${!name}" = true ] || [ "${!name}" = 1 ]; then
     echo true
     return 0
   fi

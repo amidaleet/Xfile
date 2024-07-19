@@ -1,9 +1,9 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 set -eo pipefail
 
-rm -rf "Xfile_source"
-mkdir -p "Xfile_source"
+rm -rf Xfile_source
+mkdir -p Xfile_source
 
 function load_script {
   curl \
@@ -18,4 +18,4 @@ load_script completion
 
 source Xfile_source/impl.sh
 
-impl:write_xfile_template "./Xfile"
+impl:write_xfile_template './Xfile'

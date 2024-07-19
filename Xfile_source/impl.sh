@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 source "Xfile_source/xlib.sh";
 
@@ -7,22 +7,18 @@ source "Xfile_source/xlib.sh";
 function impl:install_xfile {
   cp -f Xfile_source/completion.sh "$HOME/.xfile_completion"
 
-  pushd "$HOME"
-
   if [[ -n $(grep "source \"\$HOME/.xfile_completion\"" ".zshrc" || true) ]]; then
     log_success "Source for xfile_completion is already set in ~/.zshrc"
   else
     log "Adding completion script as source..."
 
-    echo >>".zshrc"
-    echo "source \"\$HOME/.xfile_completion\"" >>".zshrc"
+    echo >>"$HOME/.zshrc"
+    echo "source \"\$HOME/.xfile_completion\"" >>"$HOME/.zshrc"
 
     log_info "Xfile auto-completion has been added to your ~/.zshrc file"
     log_warn "Restart Terminal session to take effect"
     log "Than you'll be able to auto-complete Xfile args with tab button'"
   fi
-
-  popd
 }
 
 function impl:task_args { ## List task args if present
@@ -67,9 +63,9 @@ function help { ## List all tasks
 }
 
 function run_task {
-  local task_name="$1"
+  local task_name=$1
 
-  if [[ -z "$task_name" || "$task_name" == "help" || "$task_name" == "--help" ]]; then
+  if [ -z "$task_name" ] || [ "$task_name" = "help" ] || [ "$task_name" = "--help" ]; then
     help
     exit 0
   fi
@@ -77,15 +73,15 @@ function run_task {
   is_known_task=false
   local task
   for task in $(compgen -A function); do
-    if [[ "$task_name" == "$task" ]]; then
+    if [ "$task_name" = "$task" ]; then
       is_known_task=true
       break
     fi
   done
 
-  if [[ $is_known_task = false ]]; then
+  if [ "$is_known_task" = false ]; then
     if [ "$IS_CI" = true ]; then
-      log_error "🤔 No task named '$task_name'!"
+      log_error "🤔 No task named $task_name"
       log 'Call args:' "$@"
       log ''
       exit 3
@@ -123,7 +119,7 @@ function log_move_from_task {
 
 function push_task_stack {
   if [ -z "$_X_TASK_STACK_STR" ]; then
-    _X_TASK_STACK_STR="$1"
+    _X_TASK_STACK_STR=$1
   else
     _X_TASK_STACK_STR="$_X_TASK_STACK_STR > $1"
   fi
@@ -135,31 +131,31 @@ function push_task_stack {
 
 ## --path
 function impl:xfile_init_load { ## Loads sources and Xfile sample to provided path
-  read_opt "--path" "path"
-  assert_defined "path"
+  read_opt --path target_path
+  assert_defined target_path
 
-  cd "$path"
+  cd "$target_path"
   /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amidaleet/Xfile/HEAD/Xfile_source/setup.sh)"
 }
 
 ## --path
 function impl:xfile_init_copy { ## Copies sources and Xfile sample to provided path
-  read_opt "--path" "path"
-  assert_defined "path"
+  read_opt --path target_path
+  assert_defined target_path
 
-  cd "$path"
-  rm -rf "Xfile_source"
-  mkdir -p "Xfile_source"
+  cd "$target_path"
+  rm -rf Xfile_source
+  mkdir -p Xfile_source
   cd "$GIT_ROOT"
 
-  cp "$GIT_ROOT/Xfile_source"/* "$path/Xfile_source"
+  cp "$GIT_ROOT/Xfile_source"/* "$target_path/Xfile_source"
 
-  impl:write_xfile_template "$path/Xfile"
+  impl:write_xfile_template "$target_path/Xfile"
 }
 
 function impl:write_xfile_template {
   cat <<'TEXT' > "$1"
-#!/bin/bash
+#!/usr/bin/env bash
 
 set -eo pipefail
 
