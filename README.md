@@ -174,7 +174,7 @@ Each function can be executed as a `task` in it's own bash process.
 
 Sample template with commentary:
 ```sh
-#!/bin/bash # 👀 Tells shell to which binary this file have to be send for interpretation
+#!/usr/bin/env bash # 👀 Tells shell to which binary this file have to be send for interpretation
 
 set -eo pipefail # 👀 Recommended bash setting, can be customized
 source "Xfile_source/impl.sh" # 👀 'Copies' implementation script to Xfile body

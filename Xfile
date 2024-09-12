@@ -36,16 +36,12 @@ function install_deps { ## Install required dependencies for development
   task install_homebrew_deps
   task install_ruby
   task install_python
-  task update_gems
+  task gems_update
   task install_spm_deps
 }
 
 function install_ruby { ## Install Ruby version from .ruby-version file
   rbenv install --skip-existing
-}
-
-function update_gems { ## Install Ruby dependencies for Fastlane and Cocoapods from Gemfile
-  ruby_bundle install
 }
 
 function install_python { ## Install Python version from .python-version file
@@ -212,6 +208,30 @@ function add_ios_simulator_for_tests { ## Add/Update targeted iOS simulator for 
   fastlane add_ios_simulator_for_tests
 }
 
+function print_swift_test_results_json_for_analytics_event { ## Find test case total, fails and skips in logs Xcode test scheme run logs (out: json)
+  ruby_run "$RUBY_SCRIPTS_DIR/grep_swift_test_results.rb" \
+    p_"$OUTPUT_DIR/test_pretty_logs/swift_tools_tests/out.log" \
+    f_"$OUTPUT_DIR/test_pretty_logs/unit_tests/out.log" \
+    f_"$OUTPUT_DIR/test_pretty_logs/snapshot_tests/out.log" \
+    f_"$OUTPUT_DIR/test_pretty_logs/ui_tests/out.log" \
+    f_"$OUTPUT_DIR/test_pretty_logs/performance_tests/out.log" \
+    f_"$OUTPUT_DIR/test_pretty_logs/ui_essential_tests/out.log" \
+    f_"$OUTPUT_DIR/test_pretty_logs/impact_tests/out.log"
+}
+
+function print_swift_errors_for_mattermost { ## Find test case total, fails and skips in logs Xcode test scheme run logs (out: Mattermost markdown)
+  ruby_run "$RUBY_SCRIPTS_DIR/grep_swift_errors.rb" \
+    p_"$OUTPUT_DIR/test_pretty_logs/swift_tools_tests/err.log" \
+    p_"$OUTPUT_DIR/test_pretty_logs/swift_tools_tests/out.log" \
+    p_"$OUTPUT_DIR/test_pretty_logs/unit_tests/out.log" \
+    p_"$OUTPUT_DIR/test_pretty_logs/snapshot_tests/out.log" \
+    p_"$OUTPUT_DIR/test_pretty_logs/ui_tests/out.log" \
+    p_"$OUTPUT_DIR/test_pretty_logs/performance_tests/out.log" \
+    p_"$OUTPUT_DIR/test_pretty_logs/ui_essential_tests/out.log" \
+    p_"$OUTPUT_DIR/test_pretty_logs/impact_tests/out.log" \
+    "$1"
+}
+
 # ---------- Tools ----------
 
 function test_tools { ## Run all tools unit tests
@@ -226,6 +246,7 @@ function test_fastlane_tools { ## Run fastlane unit tests
 
 function test_xfile { ## Test Xfile implementation (arguments handling)
   local test_logs=(
+    "$(task test_dxToBool)"
     "$(task test_args_parsing -l VERSION="42  20" --word 'word' -f -t "Text with  3   words and spaces" BETA_NUMBER='beta')"
     "$(task test_args_parsing -l -f -w 'word' -t "Text with  3   words and spaces" BETA_NUMBER='beta' VERSION="42  20")"
     "$(task test_args_parsing -lf -w 'word' -t "Text with  3   words and spaces" BETA_NUMBER='beta' VERSION="42  20")"
@@ -235,8 +256,8 @@ function test_xfile { ## Test Xfile implementation (arguments handling)
     "$(task test_read_arr -a 'first:second' :)"
     "$(task test_read_arr -a 'first second' ' ')"
     "$(task test_read_arr -a $'first\nsecond' '\n')"
-    "$(task test_read_arr -a '   first   second   ' ' ')"
-    "$(task test_read_arr -a '::first:second' :)"
+    "$(task test_read_arr -a '  first   second   ' ' ')"
+    "$(task test_read_arr -a '::first:second:' :)"
     "$(task test_read_arr -a $'\nfirst\nsecond\n' '\n')"
     "$(task test_task_in_context --text "two words" -f VERSION="42  20")"
     "$(task test_task_in_context VERSION="42  20" -t "two words" --force)"
@@ -253,31 +274,6 @@ function test_xfile { ## Test Xfile implementation (arguments handling)
   done
 
   log_success "Xfile test succeeded!"
-}
-
-function test_read_arr {
-  read_arr -a myarray "$3"
-
-  local has_problems=false
-
-  if [ ! "${#myarray[@]}" -eq 2 ]; then
-    log_error "Got ${#myarray[@]} elements instead of 2. Delimiter is $3"
-    has_problems=true
-  fi
-  if [ "${myarray[0]}" != first ]; then
-    log_error "Missing first array element! Delimiter is $3"
-    has_problems=true
-  fi
-  if [ "${myarray[1]}" != second ]; then
-    log_error "Missing second array element! Delimiter is $3"
-    has_problems=true
-  fi
-
-  if [ "$has_problems" = true ]; then
-    return 3
-  fi
-
-  log_success "Array parsed as expected!"
 }
 
 function test_task_in_context {
@@ -329,6 +325,11 @@ function test_args_parsing {
     has_problems=true
   fi
 
+  if [ $(read_flags --missing) = true ]; then
+    log_error "Unexpected --missing flag resolved to true!"
+    has_problems=true
+  fi
+
   if [ "$WORD" != "word" ]; then
     log_error "$WORD != word"
     has_problems=true
@@ -354,6 +355,46 @@ function test_args_parsing {
   fi
 
   log_success "Args parsed as expected!"
+}
+
+function test_read_arr {
+  read_arr -a myarray "$3"
+
+  local has_problems=false
+  if [ ! "${#myarray[@]}" -eq 2 ]; then
+    log_error "Got ${#myarray[@]} elements instead of 2. Delimiter is $3"
+    has_problems=true
+  fi
+  if [ "${myarray[0]}" != first ]; then
+    log_error "Missing first array element! Delimiter is $3"
+    has_problems=true
+  fi
+  if [ "${myarray[1]}" != second ]; then
+    log_error "Missing second array element! Delimiter is $3"
+    has_problems=true
+  fi
+
+  if [ "$has_problems" = true ]; then
+    return 3
+  fi
+  log_success "Array parsed as expected!"
+}
+
+function test_dxToBool {
+  function assert_bool {
+    export FT_TEST=$1
+    if [ "$(dxToBool FT_TEST)" != "$2" ]; then
+      log_error "'$1' should be treated as $2"
+    fi
+  }
+
+  assert_bool 1 true
+  assert_bool 0 false
+  assert_bool true true
+  assert_bool false false
+  assert_bool other false
+
+  unset assert_bool
 }
 
 # ---------- Lint & Format ----------
@@ -383,7 +424,7 @@ function format_swift { ## Format modified .swift files
 
 function format_ruby { ## Format .rb files
   log_info "🚧 Format ruby with rubocop"
-  rubocop -a
+  ruby_bundle exec rubocop -a --format simple
   log "✅ rubocop finished without offenses 🚧"
 }
 
@@ -411,7 +452,7 @@ function lint_swift { ## Lint modified .swift files
 
 function lint_ruby { ## Lint all Ruby files
   log_info "🚧 Lint ruby with rubocop"
-  RUBOCOP --lint
+  ruby_bundle exec rubocop --lint
 }
 
 # ---------- Jenkins ----------
@@ -527,9 +568,6 @@ function ruby_bundle { ## run bundle cmd
   local BUNDLER_VERSION=$(< "$GIT_ROOT/Gemfile.lock" tail -1 | tr -d " ")
 
   if ! gem list --installed bundler --version "$BUNDLER_VERSION" >/dev/null; then
-    # - Important:
-    # We use direct source in .gemrc file because of self-signed certificates in agents network.
-    # Without this the command below will fail.
     echo "💿 Installing bundler $BUNDLER_VERSION to install ruby dependencies"
     gem install bundler --version "$BUNDLER_VERSION" --config-file "$GIT_ROOT/.gemrc"
   fi
@@ -537,8 +575,16 @@ function ruby_bundle { ## run bundle cmd
   bundle "$@"
 }
 
-function rubocop { ## run robocop command
-  "$SCRIPTS_FOLDER/rubocopw.sh" "$@"
+function gems_freeze { ## Forbid changes in Gemfile.lock
+  ruby_bundle config set frozen true
+}
+
+function gems_defrost { ## Allow changes in Gemfile.lock
+  ruby_bundle config set frozen false
+}
+
+function gems_update { ## Resolve and setup gems from Gemfile (ruby) and Pluginfile (fastlane)
+  ruby_bundle install
 }
 
 # ---------- Git ----------
@@ -585,6 +631,11 @@ function feature { ## create feature branch
     log ""
     log_warn "Or pass -s arg:"
     log "x feature -t SDMI-0001 -s last_name"
+  fi
+
+  if [[ "$TICKET" == */* ]]; then
+    INDEX="${TICKET#*/}"
+    TICKET="${TICKET%/*}"
   fi
 
   local name="feature/$SURNAME/$TICKET/${INDEX-0}"

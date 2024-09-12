@@ -9,6 +9,8 @@ module SD_SPEC
   IOS_SIMULATOR_RUNTIME_VERSION = '17.2'
   IOS_SDK_VERSION = '17.2'
 
+  MM_MESSAGE_MAX_LENGTH = 16_000
+
   def self.require_all
     masks = ['helpers/*.rb', 'products/**/*.rb']
     files = []

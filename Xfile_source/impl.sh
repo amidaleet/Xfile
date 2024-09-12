@@ -109,6 +109,11 @@ function task_in_context {
   task "$@" "${_INPUT_ARR[@]}"
 }
 
+# Clean output, no xfile logs
+function task_out {
+  $0 "$@"
+}
+
 function log_move_to_task {
   printf "🏃‍♀️‍➡️ $(tput setaf 6) in: %s > %s$(tput sgr0)\n" "$_X_TASK_STACK_STR" "$1"
 }
