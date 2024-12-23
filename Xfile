@@ -2,9 +2,10 @@
 
 set -eo pipefail
 
-SCRIPTS_FOLDER="tools/sh"
+export GIT_ROOT="$(realpath .)"
+export SCRIPTS_FOLDER="$GIT_ROOT/tools/sh"
 
-source "Xfile_source/impl.sh"
+source "$GIT_ROOT/Xfile_source/impl.sh"
 
 export IS_CI=false
 if [[ -n "$JENKINS_HOME" || -n "$JENKINS_URL" ]]; then
@@ -15,7 +16,6 @@ export FASTLANE_SKIP_UPDATE_CHECK=1
 export FASTLANE_HIDE_CHANGELOG=1
 export FASTLANE_XCODEBUILD_SETTINGS_TIMEOUT=120
 
-export GIT_ROOT="$(realpath .)"
 export OUTPUT_DIR="$GIT_ROOT/output"
 TOOLS_DIR="$GIT_ROOT/tools"
 RUBY_SCRIPTS_DIR="$GIT_ROOT/fastlane/scripts"
@@ -33,7 +33,7 @@ function bash_version { ## log bash version (which runs Xfile)
 # ---------- Setup ----------
 
 function install_deps { ## Install required dependencies for development
-  task install_homebrew_deps
+  task brew:install_ios_utils_from_brew
   task install_ruby
   task install_python
   task gems_update
@@ -52,48 +52,9 @@ function install_spm_deps { ## Install Swift dependencies from Mintfile
   mint bootstrap
 }
 
-# brew is "evergreen package manager", it cannot load exact fixed versions.
-# By default install call updates existing deps.
-#
-# bundle command and Brewfile does not address the issue.
-# Brewfile.lock.json does not used in next bundle call, it is only a report.
-#
-# Upgrade can be avoided with next args: brew bundle --no-lock --no-upgrade Brewfile
-# But it is still unnecessary work comparing to simple install call
-#
-# HOMEBREW_NO_INSTALL_UPGRADE flag turns off auto upgrade
-## --upgrade
-function install_homebrew_deps { ## Install OS dependencies
-  log_info "Install Homebrew dependencies:"
-  deps=(
-    git        # Fresher than system
-    git-lfs    # Separete storage for large files in git
-    pyenv      # Fix python version
-    rbenv      # Fix ruby version
-    ruby-build
-    mint       # SPM deps manager
-    xcbeautify # Format xcodebuild output
-  )
-
-  local action='install (if missing)'
-  if [ $(read_flags --upgrade) = false ]; then
-    export HOMEBREW_NO_INSTALL_UPGRADE=true
-    export HOMEBREW_NO_AUTO_UPDATE=true
-    action='install & upgrade'
-  fi
-
-  log_info "Will $action next deps:"
-  log "${deps[@]}"
-  log_warn ''Error:' & 'Warning:' in log are expected for already installed deps'
-
-  brew install "${deps[@]}"
-  log_success "brew install complete!"
-}
-
 function setup { ## Prepare environment for development
   task setup_git
-  task set_xcode_header
-  task install_deps
+  task brew:install_ios_utils_from_brew
 
   log_success "Setup finished!"
 }
@@ -119,85 +80,96 @@ function install_git_hooks { ## Install helpful git hooks (branch name checker, 
   "$GIT_HOOKS_DIR/make_hooks.sh"
 }
 
+# ---------- brew (CLI bins) ----------
+
+function brew:repack_installed_deps { ## repack brew CLI utils to ./output/bin_repack_arch.zip
+  child_task "$SCRIPTS_FOLDER/brew_x.sh" repack_installed_deps
+}
+
+## --upgrade
+function brew:install_ios_utils_from_brew {
+  child_task "$SCRIPTS_FOLDER/brew_x.sh" install_deps
+}
+
+function brew:install_ios_utils_from_repack {
+  log_info 'ENV is:'
+  log "📌 DX_SHELL_UTILS_DIR"
+  log "$DX_SHELL_UTILS_DIR"
+  log "📌 PATH"
+  log "$PATH"
+
+  if [ -z "$DX_SHELL_UTILS_DIR" ]; then
+    log_error "DX_SHELL_UTILS_DIR is missing in ENV"
+    log_info '.zprofile sample:'
+    echo
+    # shellcheck disable=SC2016
+    log \
+      'export DX_SHELL_UTILS_DIR="$HOME/Development/dx_utils"' \
+      'export PATH="$DX_SHELL_UTILS_DIR/bin:$PATH"'
+    echo
+    return 64
+  fi
+
+  if [[ ! "$PATH" == *"$DX_SHELL_UTILS_DIR/bin:"* ]]; then
+    log_error "DX_SHELL_UTILS_DIR is missing in PATH"
+    log_info '.zprofile sample:'
+    echo
+    # shellcheck disable=SC2016
+    log \
+      'export DX_SHELL_UTILS_DIR="$HOME/Development/dx_utils"' \
+      'export PATH="$DX_SHELL_UTILS_DIR/bin:$PATH"'
+    echo
+    return 64
+  fi
+
+  local repack_extraction_dir="$GIT_ROOT/output/bin_repack"
+  local mac_arch="$(uname -m)"
+  local zip_path="$GIT_ROOT/output/bin_repack_${mac_arch}.zip"
+
+  log_warn "Loading is missing in this implementation!"
+  log_next "Will unpack .zip from: $zip_path to: $repack_extraction_dir"
+  rm -rf "$repack_extraction_dir"
+  mkdir -p "$repack_extraction_dir"
+  unzip "$zip_path" -d "$repack_extraction_dir"
+
+  log_next "Will install utils for arch $mac_arch"
+
+  rm -rf "${DX_SHELL_UTILS_DIR:?}"/{*,.*} || true
+  mkdir -p "$DX_SHELL_UTILS_DIR"
+
+  mv -v "$repack_extraction_dir"/* "$DX_SHELL_UTILS_DIR"
+}
+
 # ---------- Xcode ----------
 
-function set_xcode_header { ## Set org Xcode header template in user directory
+## --dir
+function xcode:patch_3rd_party_deps_for_arm64_simulator { ## Use arm64-to-sim to patch .xcframework sim arch in provided dir
+  read_opt --dir deps_dir
+  assert_defined deps_dir
+
+  "$SCRIPTS_FOLDER/add_arm64_sim_archs.sh" "$deps_dir"
+}
+
+function xcode:set_header { ## Set org Xcode header template in user directory
   log_info "Set Sber Xcode header template in ~/Library/Developer/Xcode/UserData/"
   cp "$TOOLS_DIR/xcode/IDETemplateMacros.plist" "$HOME/Library/Developer/Xcode/UserData/"
 
   log "✅ Updated template at: ~/Library/Developer/Xcode/UserData/, file: IDETemplateMacros.plist"
 }
 
-# Idea source:
-# https://blog.kulman.sk/faster-way-to-download-and-install-xcode/
-## VERSION="" BETA_NUMBER="" COOKIE="" --skip-load --skip-move-archive --skip-unpack --skip-move-app --skip-remove-archive
-function install_xcode { ## Install Xcode of specified version
-  read_args VERSION BETA_NUMBER COOKIE
-  assert_defined VERSION COOKIE SUDO_PASS
-
-  if [ $(read_flags --skip-load) = true ]; then
-    export SKIP_LOAD=true
-  fi
-  if [ $(read_flags --skip-move-archive) = true ]; then
-    export SKIP_MOVE_ARCHIVE=true
-  fi
-  if [ $(read_flags --skip-unpack) = true ]; then
-    export SKIP_UNPACK=true
-  fi
-  if [ $(read_flags --skip-move-app) = true ]; then
-    export SKIP_MOVE_APP=true
-  fi
-  if [ $(read_flags --skip-remove-archive) = true ]; then
-    export SKIP_REMOVE_ARCHIVE=true
-  fi
-
-  "$SCRIPTS_FOLDER/install_xcode.sh" -v "$VERSION" -b "$BETA_NUMBER" -c "$COOKIE"
-
-  unset SKIP_LOAD SKIP_MOVE_ARCHIVE SKIP_UNPACK SKIP_MOVE_APP SKIP_REMOVE_ARCHIVE
+# Idea source: https://blog.kulman.sk/faster-way-to-download-and-install-xcode/
+## --version --start_step
+function xcode:install { ## Install Xcode of specified version
+  child_task "$SCRIPTS_FOLDER/Xcode_x.sh" xcode:install
 }
 
-## VERSION="" COOKIE=""
-function install_ios_runtime { ## Install simctl runtime
-  read_args VERSION COOKIE
-  assert_defined VERSION COOKIE
-
-  "$SCRIPTS_FOLDER/install_ios_runtime.sh" -v "$VERSION" -c "$COOKIE"
+## --version
+function xcode:install_ios_runtime {
+  child_task "$SCRIPTS_FOLDER/Xcode_x.sh" ios_runtime:install
 }
 
-function fix_ios_runtime_missing_when_installed { ## Fix "missing" iOS images, reinstalling runtime (bug with image unmount in /Library/Developer/CoreSimulator/Volumes)
-  local tmp_folder="$HOME/dx_cache/images"
-  log "Will use $tmp_folder as tempopary iOS runtime images store"
-  rm -rf "$tmp_folder"
-  mkdir -p "$tmp_folder"
-
-  cd /Library/Developer/CoreSimulator/Images
-  log_info "Next images exist:"
-  ls -- *.dmg
-
-  log_info "Saving runtime images"
-  for image in *.dmg; do
-    if [ ! -f "$image" ]; then
-      continue
-    fi
-    log "Coping ios image named: $image"
-    cp "$image" "$tmp_folder/$image"
-  done
-
-  log_info "Removing all runtimes"
-  xcrun simctl runtime delete all || true
-
-  log_info "Adding runtime images"
-  cd "$tmp_folder"
-  for image in *.dmg; do
-    if [ ! -f "$image" ]; then
-      continue
-    fi
-    log "Adding image: $image"
-    xcrun simctl runtime add "$tmp_folder/$image"
-  done
-
-  rm -rf "$tmp_folder"
-  log_success "All iOS runtimes has been re-added!"
+function xcode:fix_ios_runtime_missing_when_installed { ## Fix "missing" iOS images, reinstalling runtime (bug with image unmount in /Library/Developer/CoreSimulator/Volumes)
+  child_task "$SCRIPTS_FOLDER/Xcode_x.sh" ios_runtime:fix_missing
 }
 
 function remove_ios_simulators { ## Remove all iOS simulators from Xcode
@@ -405,7 +377,7 @@ function format { ## Format modified files
 }
 
 function format_swift { ## Format modified .swift files
-  declare -a filesArr
+  local filesArr=()
 
   for file in $(git diff --cached --name-only --diff-filter=ACM -- '*.swift'); do
     filesArr+=("$file")
@@ -434,7 +406,7 @@ function lint {
 }
 
 function lint_swift { ## Lint modified .swift files
-  declare -a filesArr
+  local filesArr=()
 
   for file in $(git diff --cached --name-only --diff-filter=ACM -- '*.swift'); do
     filesArr+=("$file")
@@ -788,7 +760,7 @@ function git:clean_remote { ## Remove too old and merged branches from origin
     git fetch --prune
   fi
 
-  declare -a branchArr
+  local branchArr=()
   for branch in $(git branch -r --merged main | grep -v main | grep -v release/ | grep -v cloud/ | sed 's/origin\///'); do
     branchArr+=("$branch")
   done
@@ -831,7 +803,7 @@ function git:delete_branches { ## Remove branches by wildcard
     git fetch --prune
   fi
 
-  declare -a branchArr
+  local branchArr=()
 
   for branch in $(git branch --all --list "$WILDCARD" | sed 's/  origin\///'); do
     branchArr+=("$branch")
@@ -869,7 +841,7 @@ function git:delete_tags { ## Remove tags by wildcard
     git fetch --tags --prune
   fi
 
-  declare -a tagsArr
+  local tagsArr=()
 
   for tag in $(git tag -l "$WILDCARD"); do
     tagsArr+=("$tag")
@@ -886,7 +858,7 @@ function git:delete_tags { ## Remove tags by wildcard
 
   if [[ $(read_flags --remote -r) = true ]]; then
     log_info "🗑️  Removing remote tags"
-    declare -a refsArr
+    local refsArr=()
     for tag in ${tagsArr[@]}; do
       refsArr+=("refs/tags/$tag")
     done

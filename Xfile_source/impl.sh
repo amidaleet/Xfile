@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 
-source "Xfile_source/xlib.sh";
+source "$GIT_ROOT/Xfile_source/xlib.sh"
 
 # ---------- Xfile core ----------
 
 function impl:install_xfile {
   cp -f Xfile_source/completion.sh "$HOME/.xfile_completion"
 
-  if [[ -n $(grep "source \"\$HOME/.xfile_completion\"" ".zshrc" || true) ]]; then
+  if [[ -n $(grep "source \"\$HOME/.xfile_completion\"" "$HOME/.zshrc" || true) ]]; then
     log_success "Source for xfile_completion is already set in ~/.zshrc"
   else
     log "Adding completion script as source..."
@@ -22,9 +22,8 @@ function impl:install_xfile {
 }
 
 function impl:task_args { ## List task args if present
-    declare -a funcDefStr
-    while IFS= read -r line
-    do
+    local funcDefStr=()
+    while IFS= read -r line; do
       funcDefStr+=("$line")
     done < <(grep -B 1 -E "^(function $1 {.*)" "$0")
 
@@ -62,7 +61,7 @@ function help { ## List all tasks
   echo "./Xfile install_xfile"
 }
 
-function run_task {
+function run_task { ## Execute task as shell command
   local task_name=$1
 
   if [ -z "$task_name" ] || [ "$task_name" = "help" ] || [ "$task_name" = "--help" ]; then
@@ -81,9 +80,9 @@ function run_task {
 
   if [ "$is_known_task" = false ]; then
     if [ "$IS_CI" = true ]; then
-      log_error "🤔 No task named $task_name"
+      log_error "🤔 No task named '$task_name'!"
       log 'Call args:' "$@"
-      log ''
+      echo
       exit 3
     fi
     log_warn "🤔 No task named: $task_name"
@@ -96,21 +95,25 @@ function run_task {
   "$@"
 }
 
-# Execute task as shell command (Separate process from parent task script)
+function child_task { ## Execute child Xfile task
+  if [ -n "$2" ]; then
+    "$1" "$2" "${_INPUT_ARR[@]:1}"
+  else
+    "$1" "${_INPUT_ARR[@]:1}"
+  fi
+}
+
 function task {
   log_move_to_task "$1"
   $0 "$@"
   log_move_from_task "$1"
 }
 
-# Execute task as shell command (Separate process from parent task script)
-# Downstream command line arguments from parent task
-function task_in_context {
-  task "$@" "${_INPUT_ARR[@]}"
+function task_in_context { ## Execute task as shell command passing all arguments from parent task
+  task "$@" "${_INPUT_ARR[@]:1}"
 }
 
-# Clean output, no xfile logs
-function task_out {
+function task_out { ## Clean output, no Xfile logs
   $0 "$@"
 }
 
@@ -164,9 +167,9 @@ function impl:write_xfile_template {
 
 set -eo pipefail
 
-source "Xfile_source/impl.sh"
-
 export GIT_ROOT="$(realpath .)"
+
+source "$GIT_ROOT/Xfile_source/xlib.sh"
 
 # ---------- Xfile impl ----------
 

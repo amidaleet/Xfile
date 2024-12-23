@@ -8,6 +8,10 @@ log() {
   printf "%s\n" "$@"
 }
 
+log_next() {
+  printf "⏳ $(tput setaf 13)%s$(tput sgr0)\n" "$@"
+}
+
 log_info() {
   printf "👀 $(tput setaf 6)%s$(tput sgr0)\n" "$@"
 }
@@ -24,7 +28,7 @@ log_success() {
   printf "✅ $(tput setaf 2)%s$(tput sgr0)\n" "$@"
 }
 
-declare -a _INPUT_ARR
+_INPUT_ARR=()
 
 # Parse input to args that looks like:
 #
@@ -44,7 +48,7 @@ function cache_args {
     fi
   }
 
-  for word in "${@:2}"; do
+  for word in "$@"; do
     if [[ "$word" =~ ^(-|--).*$ ]]; then # flag or opt name (-a || --arg)
       save_previous_arg
       param=$word
@@ -63,7 +67,7 @@ function cache_args {
         continue
     fi
 
-    _INPUT_ARR+=("$word") # simple/positional value
+    _INPUT_ARR+=("$word") # simple/positional/pre-processed value
   done
 
   save_previous_arg
@@ -91,7 +95,7 @@ function read_args {
 
 # Read getopts-like formated args: -<flag> <value> | --<name> <value>
 #
-# $1 – flag name, formart -f | --flag
+# $1 – flag name, format -f | --flag
 # $2 – var name
 function read_opt {
   local opt_name=$1
@@ -109,7 +113,7 @@ function read_opt {
 
 # Parse bash array form string arg: (-|--)<flag> "<element0> <element1>"
 #
-# $1 – flag name, formart -f | --flag
+# $1 – flag name, format -f | --flag
 # $2 – var name
 # $3 – separator symbol (to use as IFS)
 function read_arr {
@@ -183,7 +187,7 @@ function read_flags {
   echo false
 }
 
-# Is var with provided name defined in scrip scoupe?
+# Is var with provided name defined in scrip scope?
 # Вool as stdout
 #
 # – Usage:
