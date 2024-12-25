@@ -16,6 +16,7 @@ top_level_deps=(
   aria2      # Многопоточная загрузка файлов
   xcbeautify # Форматтер логов xcodebuild команд
   mint       # Менеджер зависимостей Swift (Packages)
+  carthage   # Менеджер iOS framework
 )
 
 # ---------- Brew setup ----------
@@ -50,6 +51,8 @@ function repack_installed_deps {
   local required_deps_str
   local repo_deps=()
   local deps_cellar_dirs=()
+  local deps_opt_symlinks=()
+  local deps_lib_symlinks=()
   local deps_symlinks=()
   local path_to_pack=()
 
@@ -82,7 +85,7 @@ function repack_installed_deps {
 
   log_info "Deps and dirs count:"
   log "Total deps: ${#repo_deps[@]} | Total dirs: ${#deps_cellar_dirs[@]}"
-  log_warn 'Deps may share dir sometimes!'
+  log '- Note: deps may share dir sometimes!'
 
   brew_bins_dir="$(which brew)"
   brew_bins_dir="${brew_bins_dir%/*}"
@@ -90,8 +93,7 @@ function repack_installed_deps {
   log_info 'Resolved brew bins dir:'
   log "$brew_bins_dir"
 
-  log_next "Resolving needed symlinks list from bins dir..."
-
+  log_next "Resolving needed bin dir symlinks list..."
   for symlink in "$brew_bins_dir"/*; do
     real_bin_path="$(realpath "$symlink")"
 
@@ -102,20 +104,43 @@ function repack_installed_deps {
       fi
     done
   done
-
-  log_info 'Resolved symlinks for packing:'
+  log_info 'Resolved bin dir symlinks for packing:'
   log "${deps_symlinks[@]}"
+
+  log_next "Resolving needed opt dir symlinks list..."
+  for symlink in "$brew_root/opt"/*; do
+    real_bin_path="$(realpath "$symlink")"
+
+    for dir in "${deps_cellar_dirs[@]}"; do
+      if [[ "$real_bin_path" == "$dir"* ]]; then
+        deps_opt_symlinks+=("$symlink")
+        break
+      fi
+    done
+  done
+  log_info 'Resolved opt symlinks for packing:'
+  log "${deps_opt_symlinks[@]}"
+
+  log_next "Resolving needed lib dir symlinks list..."
+  for symlink in "$brew_root/lib"/*; do
+    real_bin_path="$(realpath "$symlink")"
+
+    for dir in "${deps_cellar_dirs[@]}"; do
+      if [[ "$real_bin_path" == "$dir"* ]]; then
+        deps_lib_symlinks+=("$symlink")
+        break
+      fi
+    done
+  done
+  log_info 'Resolved opt symlinks for packing:'
+  log "${deps_lib_symlinks[@]}"
 
   # We must provide relative path in order to eliminate parent absolute folders
   # zip resolves path relative to workdir
   log_next 'Resolving final path list for zip...'
 
-  for dir in "${deps_cellar_dirs[@]}"; do
+  for dir in "${deps_cellar_dirs[@]}" "${deps_symlinks[@]}" "${deps_opt_symlinks[@]}" "${deps_lib_symlinks[@]}"; do
     path_to_pack+=("$(grealpath -s --relative-to="$brew_root" "$dir")")
-  done
-
-  for link in "${deps_symlinks[@]}"; do
-    path_to_pack+=("$(grealpath -s --relative-to="$brew_root" "$link")")
   done
 
   log_next 'Resolved final path list for zip:'

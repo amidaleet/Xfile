@@ -92,6 +92,57 @@ function brew:install_ios_utils_from_brew {
 }
 
 function brew:install_ios_utils_from_repack {
+  brew:check_dx_utils_env
+
+  local mac_arch="${MY_ARCH:-"$(uname -m)"}"
+  log_info "Detected mac arch: $mac_arch"
+
+  local zip_path="$GIT_ROOT/output/bin_repack_${mac_arch}.zip"
+  local repack_extraction_dir="$GIT_ROOT/output/bin_repack"
+
+  log_warn "Loading is missing in this implementation!"
+  log_next "Will unpack .zip from: $zip_path to: $repack_extraction_dir"
+  rm -rf "$repack_extraction_dir"
+  mkdir -p "$repack_extraction_dir"
+  unzip -q "$zip_path" -d "$repack_extraction_dir"
+
+  log_next "Will install utils for arch $mac_arch"
+
+  rm -rf "${DX_SHELL_UTILS_DIR:?}"/{*,.*} || true
+  mkdir -p "$DX_SHELL_UTILS_DIR"
+
+  mv -v "$repack_extraction_dir"/* "$DX_SHELL_UTILS_DIR"
+}
+
+function brew:link_dylib_to_utils_dir {
+  brew:check_dx_utils_env
+
+  local mac_arch="${MY_ARCH:-"$(uname -m)"}"
+  log_info "Detected mac arch: $mac_arch"
+
+  local brew_dir
+  case "${mac_arch}" in
+    arm64)
+      brew_dir='/opt/homebrew'
+      ;;
+    x86_64)
+      brew_dir='/usr/local'
+      ;;
+    *)
+      log_error 'Unknown macOS arch!'
+      return 3
+      ;;
+  esac
+
+  log_next "Will add symlinks to:"
+  log "$brew_dir"
+
+  cd "$brew_dir"
+  sudo ln -s "$DX_SHELL_UTILS_DIR/opt" opt
+  sudo ln -s "$DX_SHELL_UTILS_DIR/lib" lib
+}
+
+function brew:check_dx_utils_env {
   log_info 'ENV is:'
   log "📌 DX_SHELL_UTILS_DIR"
   log "$DX_SHELL_UTILS_DIR"
@@ -121,23 +172,6 @@ function brew:install_ios_utils_from_repack {
     echo
     return 64
   fi
-
-  local repack_extraction_dir="$GIT_ROOT/output/bin_repack"
-  local mac_arch="$(uname -m)"
-  local zip_path="$GIT_ROOT/output/bin_repack_${mac_arch}.zip"
-
-  log_warn "Loading is missing in this implementation!"
-  log_next "Will unpack .zip from: $zip_path to: $repack_extraction_dir"
-  rm -rf "$repack_extraction_dir"
-  mkdir -p "$repack_extraction_dir"
-  unzip "$zip_path" -d "$repack_extraction_dir"
-
-  log_next "Will install utils for arch $mac_arch"
-
-  rm -rf "${DX_SHELL_UTILS_DIR:?}"/{*,.*} || true
-  mkdir -p "$DX_SHELL_UTILS_DIR"
-
-  mv -v "$repack_extraction_dir"/* "$DX_SHELL_UTILS_DIR"
 }
 
 # ---------- Xcode ----------
