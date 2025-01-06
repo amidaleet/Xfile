@@ -1,0 +1,64 @@
+#!/usr/bin/env bash
+
+set -oe pipefail
+
+COMMIT_MSG_FILE=$1
+COMMIT_SOURCE=$2
+
+msg_template="$(git config --get commit.template || true)"
+
+if [ -n "${msg_template}" ]; then
+  echo "❌ Please unset commit.template, it blocks repo commit template"
+  echo "Template: ${msg_template}"
+  echo
+  echo "Use command:"
+  echo "git config --global --unset-all commit.template"
+  exit 1
+fi
+
+if ps -ocommand= -p $PPID | grep -q -e '--amend'
+then
+  echo "💬 Is amend commit"
+  echo
+  echo "Won't alter commit message"
+  exit 0
+fi
+
+# Succeed on all merge messages, as evidenced by MERGE_MSG existing
+if [ -f "$GIT_DIR"/MERGE_MSG ]; then
+  echo "💬 Is merge commit"
+  echo
+  echo "Won't alter commit message"
+  exit 0
+fi
+
+if [ -n "${COMMIT_SOURCE}" ]; then
+  echo "💬 Commit message provided, source '${COMMIT_SOURCE}'"
+  echo "It is expected during amend, merge, or rebase operations"
+  echo "But please do not use this source to provide message commiting first time"
+  echo "It blocks required repo template"
+  echo
+  echo "Won't alter commit message"
+  exit 0
+fi
+
+echo "✏️ Prepairing commit message template for you"
+
+# Get branch name and description
+NAME="$(git branch | grep '^*' | sed 's/* //')"
+
+# Don't apply this logic if we are in a 'detached head' state (rebasing, read-only history, etc)
+# newlines below may need echo -e "\n\n: (etc.)"
+if [ "$NAME" != "(no branch)" ]; then
+  commit_msg="$(cat "${COMMIT_MSG_FILE}")"
+  cat <<'TEXT' > "${COMMIT_MSG_FILE}"
+Task
+
+**Context**:
+
+
+**Changes**:
+- 1
+TEXT
+  echo -e "$commit_msg" >> "${COMMIT_MSG_FILE}"
+fi

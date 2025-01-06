@@ -1,0 +1,48 @@
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon
+.DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+
+# Preview cache
+._*
+
+# AFP folders
+.AppleDB
+.AppleDesktop
+Network Trash Folder
+Temporary Items
+.apdisk
+
+# Xcode
+xcuserdata
+.build
+.swiftpm
+IDEWorkspaceChecks.plist
+
+# Visual Studio Code
+.vscode
+!.vscode/extensions.json
+!.vscode/settings.json
+.history
+logback.log
+
+# Ruby Bundler
+.vendor/
+
+# Python virtual environment
+venv/
+
+# tmp
+allure-report
+logs/
+output/
+**/tmp
+.cache

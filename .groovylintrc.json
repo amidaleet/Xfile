@@ -1,0 +1,33 @@
+{
+    "extends": "recommended-jenkinsfile",
+    "rules": {
+        "BuilderMethodWithSideEffects": {
+            "enabled": false
+        },
+        "DuplicateListLiteral": {
+            "enabled": false
+        },
+        "DuplicateMapLiteral": {
+            "enabled": false
+        },
+        "DuplicateNumberLiteral": {
+            "enabled": false
+        },
+        "DuplicateStringLiteral": {
+            "enabled": false
+        },
+        "ExplicitCallToMinusMethod": {
+            "enabled": false
+        },
+        "MethodCount": {
+          "enabled": false
+        },
+        "ImplicitReturnStatement": "error",
+        "UnnecessaryReturnKeyword": "off",
+        "format.LineLength": "off",
+        "format.Indentation": {
+          "spacesPerIndentLevel": 4,
+          "severity": "error"
+        }
+    }
+}
