@@ -1,0 +1,33 @@
+# frozen_string_literal: true
+
+default_platform :ios
+
+require 'fastlane'
+require_relative 'sd_specs'
+SD_SPEC.require_all
+
+import("helpers/Fastfile.Simctl.rb")
+
+before_all do |_lane, _options|
+  check_environment
+end
+
+lane :check_environment do
+  if SD_SPEC::ROOT_DIR.empty?
+    raise 'Missing GIT_ROOT in ENV'
+  end
+
+  unless SD_SPEC::FASTLANE_DIR.eql?("#{SD_SPEC::ROOT_DIR}/fastlane")
+    raise 'Wrong FASTLANE_DIR in ENV'
+  end
+
+  work_dir = sh('pwd').strip
+
+  unless work_dir.eql?(SD_SPEC::FASTLANE_DIR)
+    raise "Fastfile should be in #{SD_SPEC::FASTLANE_DIR} folder, but end up in #{work_dir}"
+  end
+end
+
+lane :xdebug do
+  puts "DEBUG!"
+end

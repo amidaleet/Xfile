@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+
+set -eo pipefail
+
+if ! ./Xfile git:assert_no_snapshot_fail_artifacts --staged; then
+  exit 1
+fi
+
+./Xfile git:move_forgotten_files_to_lfs --staged
+./Xfile format_swift
+./Xfile lint_swift
