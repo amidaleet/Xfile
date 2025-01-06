@@ -1,0 +1,53 @@
+# http://editorconfig.org
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+indent_size = 2
+indent_style = space
+insert_final_newline = true
+trim_trailing_whitespace = true
+
+[*.md]
+trim_trailing_whitespace = false
+
+[*.h,*.m]
+indent_style = space
+indent_size = 4
+
+[*.swift]
+indent_style = space
+indent_size = 4
+
+[*.groovy]
+indent_style = space
+indent_size = 4
+# lint & format for Jenkins .groovy pipes in .groovylintrc.json
+# Doc: https://github.com/nvuillam/npm-groovy-lint#configuration
+# Rules: https://codenarc.org/codenarc-rule-index.html
+
+[Makefile]
+indent_style = space
+indent_size = 4
+
+[*.json]
+indent_size = 2
+
+[*.js]
+indent_size = 2
+
+[*.jsx]
+indent_size = 2
+
+[*.scss]
+indent_size = 2
+
+[*.css]
+indent_size = 2
+
+[*.sh]
+indent_size = 2
+
+[*.yml]
+indent_size = 2

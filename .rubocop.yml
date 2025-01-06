@@ -1,0 +1,230 @@
+# Docs:
+# https://docs.rubocop.org/rubocop/cops_layout.html
+
+require:
+  - rubocop/require_tools
+  - rubocop-performance
+  - rubocop-rspec
+
+AllCops:
+  DisplayCopNames: true
+  DisplayStyleGuide: true
+  TargetRubyVersion: 3.1.1
+  NewCops: enable
+  UseCache: true
+  CacheRootDirectory:
+  Include:
+    - "fastlane/**/*.rb"
+    - "fastlane/**/*Fastfile"
+    - "./Gemfile"
+    - "fastlane/Pluginfile"
+
+# This suggests use of `tr` instead of `gsub`. While this might be more performant,
+# these methods are not at all interchangeable, and behave very differently. This can
+# lead to people making the substitution without considering the differences.
+Performance/StringReplacement:
+  Enabled: false
+
+# kind_of? is a good way to check a type
+Style/ClassCheck:
+  EnforcedStyle: kind_of?
+
+# specs sometimes have useless assignments, which is fine
+Lint/UselessAssignment:
+  Exclude:
+    - "fastlane/**/*_spec.rb"
+
+Layout/FirstHashElementIndentation:
+  Enabled: true
+
+Layout/HashAlignment:
+  Enabled: true
+
+Layout/DotPosition:
+  Enabled: true
+
+Style/DoubleNegation:
+  Enabled: true
+
+Style/FormatStringToken:
+  Enabled: false
+
+Lint/NonAtomicFileOperation:
+  Enabled: false
+
+# Prevent to replace [] into %i
+Style/SymbolArray:
+  Enabled: false
+
+# This cop would not work fine with rspec
+Style/MixinGrouping:
+  Exclude:
+    - "**/spec/**/*"
+
+# Sometimes we allow a rescue block that doesn't contain code
+Lint/SuppressedException:
+  Enabled: false
+
+Lint/AmbiguousBlockAssociation:
+  Enabled: false
+
+# Needed for $verbose
+Style/GlobalVars:
+  Enabled: false
+
+# We want to allow class Fastlane::Class
+Style/ClassAndModuleChildren:
+  Enabled: false
+
+# $? Exit
+Style/SpecialGlobalVars:
+  Enabled: false
+
+Metrics/CyclomaticComplexity:
+  Enabled: false
+
+# The %w might be confusing for new users
+Style/WordArray:
+  MinSize: 19
+
+# raise and fail are both okay
+Style/SignalException:
+  Enabled: false
+
+# Better too much 'return' than one missing
+Style/RedundantReturn:
+  Enabled: false
+
+# Having if in the same line might not always be good
+Style/IfUnlessModifier:
+  Enabled: false
+
+Style/AndOr:
+  Enabled: true
+  EnforcedStyle: always
+
+# Configuration parameters: CountKeywordArgs.
+Metrics/ParameterLists:
+  Max: 17
+
+# Sometimes it's easier to read without guards
+Style/GuardClause:
+  Enabled: false
+
+# We allow both " and '
+Style/StringLiterals:
+  Enabled: false
+
+# Dangerous rule.
+#
+# String is reference type in Ruby, .to_s returns same instance
+# .to_s call on interpolated literal produces unfrozen mutable value
+Style/RedundantInterpolation:
+  Enabled: false
+
+# something = if something_else
+# that's confusing
+Style/ConditionalAssignment:
+  Enabled: false
+
+# Better to have too much self than missing a self
+Style/RedundantSelf:
+  Enabled: false
+
+# e.g.
+# def self.is_supported?(platform)
+# we may never use `platform`
+Lint/UnusedMethodArgument:
+  Enabled: false
+
+# the let(:key) { ... }
+Lint/ParenthesesAsGroupedExpression:
+  Exclude:
+    - "**/_spec.rb"
+
+# This would reject is_ in front of methods
+# We use `is_supported?` everywhere already
+Naming/PredicateName:
+  Enabled: false
+
+# We allow the $
+Style/PerlBackrefs:
+  Enabled: false
+
+# They have not to be snake_case
+Naming/FileName:
+  Exclude:
+    - "**/Brewfile"
+    - "**/Gemfile"
+    - "**/Podfile"
+    - "**/Fastfile"
+    - "**/Pluginfile"
+
+Style/Documentation:
+  Enabled: false
+
+# ( ) for method calls
+Style/MethodCallWithArgsParentheses:
+  Enabled: true
+  EnforcedStyle: require_parentheses
+  AllowedMethods:
+    - "require"
+    - "require_relative"
+    - "fastlane_require"
+    - "gem"
+    - "program"
+    - "command"
+    - "raise"
+    - "attr_accessor"
+    - "attr_reader"
+    - "desc"
+    - "lane"
+    - "private_lane"
+    - "platform"
+    # rspec tests code below
+    - "to"
+    - "not_to"
+    - "describe"
+    - "it"
+    - "be"
+    - "context"
+    - "before"
+    - "after"
+    - "message"
+
+RSpec/ExampleLength:
+  Max: 40
+
+# This cop supports safe auto-correction (--auto-correct).
+# Configuration parameters: AllowHeredoc, AllowURI, URISchemes, IgnoreCopDirectives, IgnoredPatterns.
+# URISchemes: http, https
+Layout/LineLength:
+  Max: 258
+
+# Configuration parameters: IgnoredMethods, CountRepeatedAttributes.
+Metrics/AbcSize:
+  Max: 41
+
+# Configuration parameters: CountComments, CountAsOne, ExcludedMethods, IgnoredMethods.
+# IgnoredMethods: refine
+Metrics/BlockLength:
+  Max: 170
+
+# Configuration parameters: CountComments, CountAsOne.
+Metrics/ClassLength:
+  Max: 800
+
+# Configuration parameters: CountComments, CountAsOne, ExcludedMethods, IgnoredMethods.
+Metrics/MethodLength:
+  Max: 88
+
+# Configuration parameters: CountComments, CountAsOne.
+Metrics/ModuleLength:
+  Max: 172
+
+# Вызов String.new понятнее чем +'', отключаем оптимизацию
+Performance/UnfreezeString:
+  Enabled: false
+
+Style/FrozenStringLiteralComment:
+  Enabled: false
