@@ -8,16 +8,28 @@ if [[ $(type complete) != "complete not found" ]]; then
       COMPREPLY=($(./Xfile task_args ${COMP_WORDS[1]}))
       return
     fi
+    local names
+    names=$(./Xfile task_names)
 
-    local task_names=$(grep -E '^function [a-zA-Z0-9_:]+ {.*' Xfile |
-      sed -e 's/function //' | # drop prefix
-      awk 'BEGIN {FS = " {"}; {
-        gsub(/##/, "", $2);
-        printf "%s\n", $1
-      }
-      ')
+    if [ "$?" != 0 ]; then
+      local func_lines
+      func_lines=$(grep -E '^function [a-zA-Z0-9_:]+(\(\))? {.*' Xfile || true)
+      if [ -z "$func_lines" ]; then
+        COMPREPLY=''
+        return
+      fi
 
-    COMPREPLY="$task_names"
+      names=$(echo "$func_lines" |
+        sed -e 's/function //' | # drop prefix
+        awk 'BEGIN {FS = " {"}; {
+          gsub(/\(\)/, "", $1);
+          gsub(/##/, "", $2);
+          printf "%s\n", $1
+        }
+        ')
+    fi
+
+    COMPREPLY="$names"
   }
 
   complete -F xfile_completions Xfile
