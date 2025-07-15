@@ -4,6 +4,10 @@ source "$GIT_ROOT/Xfile_source/xlib.sh"
 
 # ---------- Xfile core ----------
 
+function install_xfile { ## Install autocompletion
+  impl:install_xfile "$@"
+}
+
 function impl:install_xfile {
   cp -f Xfile_source/completion.sh "$HOME/.xfile_completion"
 
@@ -21,22 +25,72 @@ function impl:install_xfile {
   fi
 }
 
-function impl:task_args { ## List task args if present
-    local funcDefStr=()
-    while IFS= read -r line; do
-      funcDefStr+=("$line")
-    done < <(grep -B 1 -E "^(function $1 {.*)" "$0")
+function task_args { ## List task args
+  impl:task_args "$@" || true
+}
 
-    if [[ "${#funcDefStr[@]}" -eq 2 ]] && [[ "${funcDefStr[0]}" =~ ^\#\#\ .* ]]; then
+function impl:task_args {
+  local file=${2:-$0}
+  local funcDefStr=()
+  while IFS= read -r line; do
+    funcDefStr+=("$line")
+  done < <(grep -B 1 -E "^function $1(\(\))? {.*" "$file")
+
+  if [[ "${#funcDefStr[@]}" -eq 2 ]]; then
+    if [[ "${funcDefStr[0]}" =~ ^\#\#\ .* ]]; then
       echo "${funcDefStr[0]//## /}"
     else
       echo
     fi
+  else
+    return 3
+  fi
 }
 
-function help { ## List all tasks
-  echo "$(tput setaf 4)# Tasks:$(tput sgr0)"
-  grep -E '^(function [a-zA-Z0-9_:]+ {.*)|(# ---).*' "$0" |
+function task_names { ## List available task names
+  show_task_names_from "$0"
+}
+
+function show_task_names_from { ## Print task names list from file
+  if [ ! -f "$1" ]; then
+    return
+  fi
+
+  local func_lines
+  func_lines=$(grep -E '^function [a-zA-Z0-9_:]+(\(\))? {.*' "$1" || true)
+  if [ -z "$func_lines" ]; then
+    return
+  fi
+
+  echo "$func_lines" |
+    sed -e 's/function //' | # drop prefix
+    awk 'BEGIN {FS = " {"}; {
+      gsub(/\(\)/, "", $1);
+      gsub(/##/, "", $2);
+      printf "%s\n", $1
+    }
+    '
+}
+
+function show_tasks_from { ## Print task descriptions list from file
+  if [ ! -f "$1" ]; then
+    log_warn "Found missing file while reading tasks: $1"
+    return
+  fi
+
+  if [ -n "$2" ]; then
+    echo "$(tput setaf 4)# $2$(tput sgr0)"
+  else
+    echo "$(tput setaf 4)# Tasks in $1:$(tput sgr0)"
+  fi
+  local picked_lines
+  picked_lines=$(grep -E '(^function [a-zA-Z0-9_:]+(\(\))? {.*)|(^# ----------).*' "$1" || true)
+  if [ -z "$picked_lines" ]; then
+    log_warn "No any visible tasks! You may add some 'function task_name {' to your file"
+    return
+  fi
+
+  echo "$picked_lines" |
     sed -e 's/function //' | # drop prefix
     awk 'BEGIN {FS = " {"}; {
       if ($1 ~ /^# ----------/) {
@@ -45,14 +99,22 @@ function help { ## List all tasks
         printf "\n"
         printf "\033[92m- %s\033[0m\n", $1
       } else {
+        gsub(/\(\)/, "", $1);
         gsub(/##/, "", $2);
         printf "  \033[93m%-46s\033[92m %s\033[0m\n", $1, $2
       }
     }
     '
+}
 
-  echo
-  echo "$(tput setaf 4)# Usage:$(tput sgr0)"
+function help { ## Print "How to use?" info
+  show_tasks_from "$0" "Xfile tasks:"
+  log_blank_line
+  usage
+}
+
+function usage { ## Print usage instructions
+  echo "$(tput setaf 4)# To run task:$(tput sgr0)"
   echo "$0 <task> <args>"
   echo "x <task> <args>"
   echo
@@ -170,16 +232,6 @@ set -eo pipefail
 export GIT_ROOT="$(realpath .)"
 
 source "$GIT_ROOT/Xfile_source/xlib.sh"
-
-# ---------- Xfile impl ----------
-
-function install_xfile { ## Adds alias and auto-completion script to .zshrc
-  impl:install_xfile
-}
-
-function task_args { ## print task args
-  impl:task_args "$@"
-}
 
 run_task "$@"
 TEXT

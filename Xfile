@@ -983,24 +983,4 @@ function get_os_version {
   "$SCRIPTS_FOLDER/get_os_version.sh"
 }
 
-# ---------- Xfile impl ----------
-
-## --path
-function xfile_init_copy { ## Copy all necessary implementation files and sample Xfile to provided path (expecting your repository root folder)
-  impl:xfile_init_copy "$@"
-}
-
-## --path
-function xfile_init_load { ## Load all necessary implementation files and sample Xfile to provided path (expecting your repository root folder)
-  impl:xfile_init_load "$@"
-}
-
-function install_xfile { ## Adds alias and auto-completion script to .zshrc
-  impl:install_xfile
-}
-
-function task_args { ## print task args
-  impl:task_args "$@"
-}
-
 run_task "$@"

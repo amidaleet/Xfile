@@ -106,7 +106,7 @@ function read_opt {
     if [[ $argument == "$opt_name="* ]]; then
       argument="${argument/"$opt_name="/}"
       eval "$var_name='$argument'"
-      return 0
+      return
     fi
   done
 }
@@ -126,7 +126,7 @@ function read_arr {
     if [[ $argument == "$opt_name="* ]]; then
       argument="${argument/"$opt_name="/}"
       str_to_arr "$argument" "$arr_name" "$separator"
-      return 0
+      return
     fi
   done
 }
@@ -168,7 +168,7 @@ function read_flags {
     for argument in "${_INPUT_ARR[@]}"; do
       if [ "$argument" = "$name" ]; then
         echo true
-        return 0
+        return
       fi
     done
   done
@@ -178,7 +178,7 @@ function read_flags {
       for argument in "${_INPUT_ARR[@]}"; do
         if [[ $argument =~ ^-[a-zA-Z]*"${name/-/}"[a-zA-Z]* ]]; then
           echo true
-          return 0
+          return
         fi
       done
     fi
@@ -230,7 +230,7 @@ function dxToBool {
   local name="$1"
   if [ "${!name}" = true ] || [ "${!name}" = 1 ]; then
     echo true
-    return 0
+    return
   fi
   echo false
 }

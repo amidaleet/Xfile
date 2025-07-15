@@ -19,6 +19,8 @@ Aimed to replace widespread `Makefile` misuse as a repo commands launcher.
   - [Write Xfile](#write-xfile)
     - [Xfile structure](#xfile-structure)
     - [Task](#task-1)
+    - [Task visibility](#task-visibility)
+    - [Child task](#child-task)
     - [Arguments](#arguments-1)
     - [ENV](#env)
     - [Credentials](#credentials)
@@ -55,7 +57,7 @@ rm -f setup.sh
 Or you can use command from the root of **this** repository.
 ```sh
 # Will create plain Xfile and copy impl files to provided directory
-x xfile_init --path "$HOME/Developer/my-app-repository"
+x impl:xfile_init_copy --path "$HOME/Developer/my-app-repository"
 ```
 
 ### Interactive shell (alias and autocomplete)
@@ -160,6 +162,8 @@ Makefile-styled documentation for declared tasks is built-in.
 'help' is the default task:
 ```sh
 x help
+
+# or simply:
 x
 ```
 
@@ -202,16 +206,6 @@ function any_task_you_want_to_add { ## 👀 One line note about task meaning
   if [[ $(is_defined "LOGIN") = true ]]; then log "DEFINED!"; fi
   if [ $(read_flags "--flag") = true ]; then log "true"; fi
   # 👀 ^^^ helper functions from xlib
-}
-
-# ---------- Xfile impl ---------- # 👀 Wrappers in this block makes impl tasks visible
-
-function install_xfile { ## Adds alias and auto-completion script to .zshrc
-  impl:install_xfile
-}
-
-function task_args { ## print task args
-  impl:task_args "$@"
 }
 
 run_task "$@" # 👀 Starts input handling, calls specified task
@@ -265,6 +259,76 @@ function run_ci_pipe {
 function build {
   read_args "val" # 👀 Searches in the process input, not in the function's one
   echo "$val" # 👀 '' or 'smth' (if process started with arg that have same name, ex: 'x run_ci_pipe val=smth')
+}
+```
+
+### Task visibility
+
+All functions you declare directly in Xfile or in a script imported with `source` command (like `impl` and `xlib`) will be available in the script scope.
+
+You can execute it from command line.
+
+```sh
+x log "Some words" # task defined in Xfile_source/xlib
+x task_args my_function # task defined in Xfile_source/impl
+```
+
+You can `source` additional scripts with tasks definition. 
+
+And redefine your `Xfile` `help` function to get plugin tasks listed in `help` output. 
+
+It may be useful to allow place user defined extension file with ENV and tasks in your repo (added to `.gitignore`), like:
+
+```sh
+if [ -f ./xprofile ]; then source ./xprofile; fi
+
+function help { ## Print tasks description
+  show_tasks_from "$0" "💪 Common Xfile tasks:"
+  log_blank_line
+  show_tasks_from xprofile "👤 Personal xprofile tasks:"
+  log_blank_line
+  usage
+}
+```
+
+If you want to define utility function that not meant to be called as task, you can define it without function keyword:
+
+```sh
+copy_commit_msg() {
+  git show -s --format='%B' | pbcopy
+}
+```
+
+It won't be listed in the `help` output. 
+
+However it will be present in scope and still can be called via `x`.
+
+```sh
+x copy_commit_msg ## works as task
+```
+
+To minimize the risk of unwanted calls, use naming:
+
+```sh
+_copy_commit_msg() {}
+private:copy_commit_msg() {}
+```
+
+### Child task
+
+Instead of sourcing all the Xfiles as plugins in your main Xfile, it may be convenient to define wrapper task functions and invoke child_task on demand.
+
+- Thats prevents scope pollution and sourcing overhead. 
+- Also task names collision is not a problem with this method.
+
+```sh
+## --upgrade
+function brew:install_ios_utils_from_brew { ## Install repo deps with brew. Sample: x brew:install_ios_utils_from_brew --upgrade
+  child_task "$SCRIPTS_FOLDER/brew_x.sh" install_deps ## Will put original task args to call (after the given brew task name)
+}
+
+function brew_task { ## Forward any task to brew_x Xfile. Sample: x brew_task install_deps --upgrade
+  child_task "$SCRIPTS_FOLDER/brew_x.sh" ## Will put original task args to call
 }
 ```
 
