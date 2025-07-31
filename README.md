@@ -35,6 +35,7 @@ Aimed to replace widespread `Makefile` misuse as a repo commands launcher.
 Xfile implementation in `Xfile_source`:
   - impl.sh – common core tasks
   - xlib.sh – helpers for args handling
+  - tests.sh – tasks for impl/xlib testing
   - completion.sh – alias and autocomplete for interactive shell
 
 Samples:
@@ -195,16 +196,15 @@ export GIT_ROOT="$(realpath .)" # 👀 ENV and process values setting may be pla
 # 👀 Optional space-separated args list for autocompletion goes on row above function declaration
 ## --flag value= -i
 function any_task_you_want_to_add { ## 👀 One line note about task meaning
-  log "Simple text logging"
-  log_info "Noticeable text"
-  log_warn "Warning"
-  log_error "Error!"
-  log_success "Success!"
-  read_opt "-w" "WILDCARD" && read_opt "--wildcard" "WILDCARD"
-  read_args "ARG1" "ARG2"
-  assert_defined "ARG1" "ARG2"
-  if [[ $(is_defined "LOGIN") = true ]]; then log "DEFINED!"; fi
-  if [ $(read_flags "--flag") = true ]; then log "true"; fi
+  log 'Simple text logging'
+  log_info 'Noticeable text'
+  log_warn Warning
+  log_error Error!
+  log_success Success!
+  read_opt -w --wildcard WILDCARD
+  read_args ARG1 ARG2
+  assert_defined ARG1 ARG2
+  if read_flags --flag; then log true; fi
   # 👀 ^^^ helper functions from xlib
 }
 
@@ -223,7 +223,7 @@ Command arguments passed to the parent task call is not visible in children scop
 
 ```sh
 function run_ci_pipe {
-  read_args "val"
+  read_args val
   echo "val=$val" # 👀 value from terminal command, ex: 'x run_ci_pipe val=123' -> '123'
 
   task load_3rd_parties
@@ -234,17 +234,17 @@ function run_ci_pipe {
 }
 
 function load_3rd_parties {
-  read_args "val"
+  read_args val
   echo "val=$val" # 👀 '', value is not provided in task call
 }
 
 function build {
-  read_args "val"
+  read_args val
   echo "val=$val" # 👀 'build'
 }
 
 function test {
-  read_args "val"
+  read_args val
   echo "val=$val" # 👀 'test'
 }
 ```
@@ -257,7 +257,7 @@ function run_ci_pipe {
 }
 
 function build {
-  read_args "val" # 👀 Searches in the process input, not in the function's one
+  read_args val # 👀 Searches in the process input, not in the function's one
   echo "$val" # 👀 '' or 'smth' (if process started with arg that have same name, ex: 'x run_ci_pipe val=smth')
 }
 ```
@@ -359,8 +359,8 @@ x rebase
 Args can be Makefile-styled (name + equal sign + value string).
 ```sh
 function install_ios_runtime {
-  read_args "VERSION" "COOKIE" # 👀 Search make-like syntax VERSION='value  can have many spaces if quoted' and COOKIE=1243
-  assert_defined "VERSION" "COOKIE" # 👀 Checks if values exist in the scope and they are not empty
+  read_args VERSION COOKIE # 👀 Search make-like syntax VERSION='value  can have many spaces if quoted' and COOKIE=1243
+  assert_defined VERSION COOKIE # 👀 Checks if values exist in the scope and they are not empty
 
   "$SCRIPTS_FOLDER/install_ios_runtime.sh" -v "$VERSION" -c "$COOKIE"
 }
@@ -375,8 +375,8 @@ x install_ios_runtime VERSION=17.2 COOKIE='123456...'
 Args can be getopts-styled (--name + space + valuer string).
 ```sh
 function jenkins_job_get_script {
-  read_opt "--name" "job_name" && read_opt "-n" "job_name" # 👀 Search for both long and short form
-  assert_defined "job_name" "jenkins_creds" # 👀 Check if required values is ether in parsed args or ENV
+  read_opt -n --name job_name # 👀 Search for both long and short form
+  assert_defined job_name jenkins_creds # 👀 Check if required values is ether in parsed args or ENV
 
   log_info "Loading script for $job_name"
 
@@ -403,7 +403,7 @@ Args can be used as flags (check if provided or not).
 
 ```sh
 function git:reset_retained_lfs_files {
-  if [ $(read_flags "--lose-unstaged-changes") != true ]; then # 👀 Checks bool value
+  if ! read_flags --lose-unstaged-changes; then # 👀 Checks bool value
     log_warn "
     This call will remove all unstaged files!
 
@@ -461,7 +461,7 @@ unset SUDO_PASS
 You can work with ENV value as with simple task argument.
 ```sh
 function install_system_software {
-  assert_defined "SUDO_PASS"
+  assert_defined SUDO_PASS
 
   echo "$SUDO_PASS" | sudo -S installer -pkg "$1" -target /
 }

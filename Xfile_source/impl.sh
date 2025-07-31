@@ -11,7 +11,7 @@ function install_xfile { ## Install autocompletion
 function impl:install_xfile {
   cp -f Xfile_source/completion.sh "$HOME/.xfile_completion"
 
-  if [[ -n $(grep "source \"\$HOME/.xfile_completion\"" "$HOME/.zshrc" || true) ]]; then
+  if grep "source \"\$HOME/.xfile_completion\"" "$HOME/.zshrc" || grep "source \"\$HOME/.xfile_completion\"" "$HOME/.zprofile"; then
     log_success "Source for xfile_completion is already set in ~/.zshrc"
   else
     log "Adding completion script as source..."
@@ -126,32 +126,17 @@ function usage { ## Print usage instructions
 function run_task { ## Execute task as shell command
   local task_name=$1
 
-  if [ -z "$task_name" ] || [ "$task_name" = "help" ] || [ "$task_name" = "--help" ]; then
+  if value_in_list "$task_name" "" help --help; then
     help
-    exit 0
+    return
   fi
 
-  is_known_task=false
-  local task
-  for task in $(compgen -A function); do
-    if [ "$task_name" = "$task" ]; then
-      is_known_task=true
-      break
-    fi
-  done
-
-  if [ "$is_known_task" = false ]; then
-    if [ "$IS_CI" = true ]; then
-      log_error "🤔 No task named '$task_name'!"
-      log 'Call args:' "$@"
-      echo
-      exit 3
-    fi
-    log_warn "🤔 No task named: $task_name"
+  if ! func_defined "$task_name"; then
+    log_warn "🤔 No task named: '$task_name'!"
     log 'Maybe misspelled?'
     log 'Try: x help'
     log 'Call args:' "$@"
-    exit 4
+    return 4
   fi
 
   "$@"
@@ -201,7 +186,7 @@ function push_task_stack {
 
 ## --path
 function impl:xfile_init_load { ## Loads sources and Xfile sample to provided path
-  read_opt --path target_path
+  read_opt -p --path target_path
   assert_defined target_path
 
   cd "$target_path"
@@ -210,7 +195,7 @@ function impl:xfile_init_load { ## Loads sources and Xfile sample to provided pa
 
 ## --path
 function impl:xfile_init_copy { ## Copies sources and Xfile sample to provided path
-  read_opt --path target_path
+  read_opt -p --path target_path
   assert_defined target_path
 
   cd "$target_path"

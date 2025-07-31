@@ -2,7 +2,7 @@
 
 set -eo pipefail
 
-if [[ "${IS_CI}" = true ]]; then
+if [ "$IS_CI" = true ]; then
   echo "[CI] Skip installing git hooks for local development"
   git config --local --unset core.hooksPath || echo "✅ hooksPath seem to be missing in local config"
   exit 0
