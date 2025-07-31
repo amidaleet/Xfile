@@ -42,35 +42,30 @@ function cache_args {
   local param=''
   local word
 
-  save_previous_arg() {
-    if [ -n "$param" ]; then
-      _INPUT_ARR+=("$param")
-    fi
-  }
-
   for word in "$@"; do
     if [[ "$word" =~ ^(-|--).*$ ]]; then # flag or opt name (-a || --arg)
-      save_previous_arg
+      if [ -n "$param" ]; then _INPUT_ARR+=("$param"); fi
       param=$word
       continue
     fi
 
     if [[ "$word" =~ ^[a-zA-Z0-9_]+=.*$ ]]; then # named arg (ARG=value)
-      save_previous_arg
-      param=$word
+      if [ -n "$param" ]; then _INPUT_ARR+=("$param"); fi
+      _INPUT_ARR+=("$word")
+      param=''
       continue
     fi
 
-    if [[ "$param" =~ ^(-|--).*$ ]]; then # opt value
+    if [ -n "$param" ]; then # opt value
         _INPUT_ARR+=("$param=$word")
         param=''
         continue
     fi
 
-    _INPUT_ARR+=("$word") # simple/positional/pre-processed value
+    _INPUT_ARR+=("$word") # simple positional value
   done
 
-  save_previous_arg
+  if [ -n "$param" ]; then _INPUT_ARR+=("$param"); fi
 }
 
 # Makefile style 'ARG=VALUE' arguments parser
@@ -93,21 +88,23 @@ function read_args {
   done
 }
 
-# Read getopts-like formated args: -<flag> <value> | --<name> <value>
+# Read getopts-like formatted args: -<flag> <value> | --<name> <value>
 #
 # $1 – flag name, format -f | --flag
 # $2 – var name
 function read_opt {
-  local opt_name=$1
-  local var_name=$2
+  local var_name=${*: -1}
+  local opt_name
   local argument
 
-  for argument in "${_INPUT_ARR[@]}"; do
-    if [[ $argument == "$opt_name="* ]]; then
-      argument="${argument/"$opt_name="/}"
-      eval "$var_name='$argument'"
-      return
-    fi
+  for opt_name in "${@:1:$#-1}"; do
+    for argument in "${_INPUT_ARR[@]}"; do
+      if [[ $argument == "$opt_name="* ]]; then
+        argument="${argument/"$opt_name="/}"
+        eval "$var_name='$argument'"
+        return
+      fi
+    done
   done
 }
 
@@ -154,85 +151,104 @@ function str_to_arr {
 }
 
 # Is -f | --flag has been passed in script call?
-# Вool as stdout
+#
+# Status code, no output.
 #
 # – Usage:
-# if [[ $(read_flags "-a" "--all") = true ]]; then
+# if read_flags -a --all; then
 #   log "FLAGGED!"
 # fi
 function read_flags {
   local argument
   local name
+  local short_flag
 
   for name in "$@"; do
-    for argument in "${_INPUT_ARR[@]}"; do
-      if [ "$argument" = "$name" ]; then
-        echo true
-        return
-      fi
-    done
-  done
-
-  for name in "$@"; do
-    if [[ "$name" =~ ^-[a-zA-Z] ]]; then
+    short_flag="${name/-/}"
+    if [ "${#short_flag}" = 1 ]; then # one letter flag can be mixed with others: "-b" is in "-abc"
       for argument in "${_INPUT_ARR[@]}"; do
-        if [[ $argument =~ ^-[a-zA-Z]*"${name/-/}"[a-zA-Z]* ]]; then
-          echo true
+        if [[ $argument =~ ^-[a-zA-Z]*"${short_flag}"[a-zA-Z]* ]]; then
+          return
+        fi
+      done
+    else
+      for argument in "${_INPUT_ARR[@]}"; do
+        if [ "$argument" = "$name" ]; then
           return
         fi
       done
     fi
   done
 
-  echo false
+  return 3
 }
 
-# Is var with provided name defined in scrip scope?
-# Вool as stdout
+# Fail if any of the given args names is not defined as variable in script scope.
+#
+# Status code, no output.
 #
 # – Usage:
-# if [[ $(is_defined "LOGIN") = true ]]; then
-#   log "DEFINED!"
-# fi
-function is_defined {
-  local var_name="$1"
-  if [[ -z "${!var_name}" ]]; then
-    echo false
-  else
-    echo true
-  fi
-}
-
+# assert_defined LOGIN PASS
 function assert_defined {
   local has_missing=false
   local var_name
 
   for var_name in "$@"; do
-    if [[ -z "${!var_name}" ]]; then
+    if [ -z "${!var_name}" ]; then
       log_error "Missing required param: $var_name"
       has_missing=true
     fi
   done
 
-  if [ "$has_missing" = true ]; then
-    exit 1
+  if var_is_true has_missing; then
+    return 3
   fi
 }
 
-# Trusify check. (is value == 1 | true)?
-# Вool as stdout
+# Trusify check given variable value. (is value in [true, 1, YES, yes])?
+#
+# Status code, no output.
 #
 # – Usage:
-# if [ $(dxToBool "DX_IS_CLOUD_INFRA") = true ]; then
-#   log "TRUE"
+# if var_is_true DX_IS_CLOUD_INFRA; then
+#   log TRUE
 # fi
-function dxToBool {
-  local name="$1"
-  if [ "${!name}" = true ] || [ "${!name}" = 1 ]; then
-    echo true
+function var_is_true {
+  local name=$1
+
+  if value_in_list "${!name}" "" false; then
+    return 3
+  fi
+
+  if value_in_list "${!name}" true 1 yes YES TRUE; then
     return
   fi
-  echo false
+
+  return 3
+}
+
+# Trusify check given variable value. (is value in [true, 1, YES, yes])?
+#
+# Status code, no output.
+#
+# – Usage:
+# if value_in_list element el1 el2 el3; then
+#   log "element is in list!"
+# fi
+#
+# if value_in_list element "${arr[@]}"; then
+#   log "element is in array!"
+# fi
+function value_in_list {
+  local match=$1
+  shift
+  local e
+  for e in "$@"; do [ "$match" = "$e" ] && return; done
+  return 3
+}
+
+function func_defined {
+  declare -F "$1" > /dev/null
 }
 
 cache_args "$@"

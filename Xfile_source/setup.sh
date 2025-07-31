@@ -14,6 +14,7 @@ function load_script {
 
 load_script xlib
 load_script impl
+load_script tests
 load_script completion
 
 export GIT_ROOT="$(realpath .)"

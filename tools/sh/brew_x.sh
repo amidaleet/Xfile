@@ -33,7 +33,7 @@ function install_brew_x86_64 {
 
 ## --upgrade
 function install_deps {
-  if [ $(read_flags --upgrade) = false ]; then
+  if ! read_flags --upgrade; then
     export HOMEBREW_NO_INSTALL_UPGRADE=true
     export HOMEBREW_NO_AUTO_UPDATE=true
   fi

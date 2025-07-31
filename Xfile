@@ -6,6 +6,7 @@ export GIT_ROOT="$(realpath .)"
 export SCRIPTS_FOLDER="$GIT_ROOT/tools/sh"
 
 source "$GIT_ROOT/Xfile_source/impl.sh"
+source "$GIT_ROOT/Xfile_source/tests.sh"
 
 export IS_CI=false
 if [[ -n "$JENKINS_HOME" || -n "$JENKINS_URL" ]]; then
@@ -23,7 +24,7 @@ SWIFT_SCRIPTS_DIR="$TOOLS_DIR/swift/scripts"
 GIT_HOOKS_DIR="$TOOLS_DIR/hooks"
 
 function pg { ## Playground for Xfile development
-  true
+  return
 }
 
 function bash_version { ## log bash version (which runs Xfile)
@@ -250,159 +251,6 @@ function test_fastlane_tools { ## Run fastlane unit tests
   ruby_bundle exec rspec --pattern "tools/ruby/{**}/*_spec.rb"
 }
 
-function test_xfile { ## Test Xfile implementation (arguments handling)
-  local test_logs=(
-    "$(task test_dxToBool)"
-    "$(task test_args_parsing -l VERSION="42  20" --word 'word' -f -t "Text with  3   words and spaces" BETA_NUMBER='beta')"
-    "$(task test_args_parsing -l -f -w 'word' -t "Text with  3   words and spaces" BETA_NUMBER='beta' VERSION="42  20")"
-    "$(task test_args_parsing -lf -w 'word' -t "Text with  3   words and spaces" BETA_NUMBER='beta' VERSION="42  20")"
-    "$(task test_args_parsing --local --word 'word' --force -t "Text with  3   words and spaces" BETA_NUMBER='beta' VERSION="42  20")"
-    "$(task test_args_parsing BETA_NUMBER=beta --local --word 'word' --force --text "Text with  3   words and spaces" VERSION="42  20")"
-    "$(task test_read_arr -a 'first second')"
-    "$(task test_read_arr -a 'first:second' :)"
-    "$(task test_read_arr -a 'first second' ' ')"
-    "$(task test_read_arr -a $'first\nsecond' '\n')"
-    "$(task test_read_arr -a '  first   second   ' ' ')"
-    "$(task test_read_arr -a '::first:second:' :)"
-    "$(task test_read_arr -a $'\nfirst\nsecond\n' '\n')"
-    "$(task test_task_in_context --text "two words" -f VERSION="42  20")"
-    "$(task test_task_in_context VERSION="42  20" -t "two words" --force)"
-  )
-
-  log "${test_logs[@]}"
-
-  local log
-  for log in "${test_logs[@]}"; do
-    if [[ "$log" == *'❌'* ]]; then
-      log_warn "Some Xfile tests has failed, see log above ^^^"
-      return 3
-    fi
-  done
-
-  log_success "Xfile test succeeded!"
-}
-
-function test_task_in_context {
-  task_in_context __task_in_context
-}
-
-function __task_in_context {
-  read_opt -t TEXT && read_opt --text TEXT
-  read_args VERSION
-
-  local has_problems=false
-
-  if [ $(read_flags --force -f) = false ]; then
-    log_error "Missing expected --force -f flag!"
-    has_problems=true
-  fi
-
-  if [ "$VERSION" != "42  20" ]; then
-    log_error "$VERSION != 42  20"
-    has_problems=true
-  fi
-
-  if [ "$TEXT" != "two words" ]; then
-    log_error "$TEXT != two words"
-    has_problems=true
-  fi
-
-  if [ "$has_problems" = true ]; then
-    return 3
-  fi
-
-  log_success "Args parsed as expected!"
-}
-
-function test_args_parsing {
-  read_opt -w WORD && read_opt --word WORD
-  read_opt -t TEXT && read_opt --text TEXT
-  read_args VERSION BETA_NUMBER
-
-  local has_problems=false
-
-  if [ $(read_flags --force -f) = false ]; then
-    log_error "Missing expected --force -f flag!"
-    has_problems=true
-  fi
-
-  if [ $(read_flags --local -l) = false ]; then
-    log_error "Missing expected --local -l flag!"
-    has_problems=true
-  fi
-
-  if [ $(read_flags --missing) = true ]; then
-    log_error "Unexpected --missing flag resolved to true!"
-    has_problems=true
-  fi
-
-  if [ "$WORD" != "word" ]; then
-    log_error "$WORD != word"
-    has_problems=true
-  fi
-
-  if [ "$TEXT" != "Text with  3   words and spaces" ]; then
-    log_error "$TEXT != Text with  3   words and spaces"
-    has_problems=true
-  fi
-
-  if [ "$VERSION" != "42  20" ]; then
-    log_error "$VERSION != 42  20"
-    has_problems=true
-  fi
-
-  if [ "$BETA_NUMBER" != "beta" ]; then
-    log_error "$BETA_NUMBER != beta"
-    has_problems=true
-  fi
-
-  if [ "$has_problems" = true ]; then
-    return 3
-  fi
-
-  log_success "Args parsed as expected!"
-}
-
-function test_read_arr {
-  read_arr -a myarray "$3"
-
-  local has_problems=false
-  if [ ! "${#myarray[@]}" -eq 2 ]; then
-    log_error "Got ${#myarray[@]} elements instead of 2. Delimiter is $3"
-    has_problems=true
-  fi
-  if [ "${myarray[0]}" != first ]; then
-    log_error "Missing first array element! Delimiter is $3"
-    has_problems=true
-  fi
-  if [ "${myarray[1]}" != second ]; then
-    log_error "Missing second array element! Delimiter is $3"
-    has_problems=true
-  fi
-
-  if [ "$has_problems" = true ]; then
-    return 3
-  fi
-  log_success "Array parsed as expected!"
-}
-
-function test_dxToBool {
-  function assert_bool {
-    export FT_TEST=$1
-    if [ "$(dxToBool FT_TEST)" != "$2" ]; then
-      log_error "'$1' should be treated as $2"
-    fi
-  }
-
-  assert_bool 1 true
-  assert_bool 0 false
-  assert_bool true true
-  assert_bool false false
-  assert_bool other false
-
-  unset assert_bool
-}
-
 # ---------- Lint & Format ----------
 
 function format { ## Format modified files
@@ -419,7 +267,7 @@ function format_swift { ## Format modified .swift files
 
   if [[ "${#filesArr[@]}" -eq 0 ]]; then
     log "No .swift files to format"
-    return 0
+    return
   fi
 
   mint run nicklockwood/SwiftFormat@0.53.4 \
@@ -448,7 +296,7 @@ function lint_swift { ## Lint modified .swift files
 
   if [[ "${#filesArr[@]}" -eq 0 ]]; then
     log "No .swift files to lint"
-    return 0
+    return
   fi
 
   mint run realm/SwiftLint@0.54.0 lint \
@@ -544,9 +392,9 @@ function jenkins_job_sync { ## Update Jobs code in repo <-> server
   rm -rf "$X_JENKINS_JOB_CONFIGS_DIR"
   mkdir -p "$X_JENKINS_JOB_CONFIGS_DIR"
 
-  if [ $(read_flags --to_remote) = true ]; then
+  if read_flags --to_remote; then
     local cmd="jenkins_job_push"
-  elif [ $(read_flags --to_local) = true ]; then
+  elif read_flags --to_local; then
     local cmd="jenkins_job_pull"
   else
     log_error "Missing required destination arg!"
@@ -607,12 +455,12 @@ function ff { ## fast-forward reset branch
   local BRANCH=${1-main}
 
   if [[ -n $(git status --porcelain) ]]; then
-    if [ $(read_flags --force -f) = true ]; then
+    if read_flags --force -f; then
       log "Force flag used, will reset all changes"
     else
       log_warn "Uncommitted changes, use --force flag to reset them"
       git status --porcelain
-      return 0
+      return
     fi
   fi
 
@@ -623,9 +471,9 @@ function ff { ## fast-forward reset branch
 
 ## --ticket --index --cherry-pick --surname
 function feature { ## create feature branch
-  read_opt -s SURNAME && read_opt --surname SURNAME
-  read_opt -t TICKET && read_opt --ticket TICKET
-  read_opt -i INDEX && read_opt --index INDEX
+  read_opt -s --surname SURNAME
+  read_opt -t --ticket TICKET
+  read_opt -i --index INDEX
   local SURNAME=${MY_SURNAME-$SURNAME}
   assert_defined TICKET
 
@@ -646,7 +494,7 @@ function feature { ## create feature branch
 
   local name="feature/$SURNAME/$TICKET/${INDEX-0}"
 
-  if [ $(read_flags --cp --cherry-pick) = true ]; then
+  if read_flags --cp --cherry-pick; then
     log "Got CP flag, adding postfix"
     name="$name-cp"
   fi
@@ -656,7 +504,7 @@ function feature { ## create feature branch
 
 ## --version
 function release { ## Make and push release branch
-  read_opt --version version && read_opt -v version
+  read_opt -v --version version
   assert_defined version
 
   local tag_name="release/$version"
@@ -681,13 +529,13 @@ function git:move_forgotten_files_to_lfs { ## Move files to LFS if needed (conve
 
   log_info "Force filter files by LFS"
 
-  if [ $(read_flags --staged -s) = true ]; then
+  if read_flags --staged -s; then
     log_info "Filter staged files"
     files="$(git diff --diff-filter=d --name-only --cached | grep -E $regex || true)"
-  elif [ $(read_flags --commited -c) = true ]; then
+  elif read_flags --commited -c; then
     log_info "Filter files in last commit"
     files="$(git log --diff-filter=d --first-parent --name-only --oneline -n 1 | tail -n +2 | grep -E $regex || true)"
-  elif [ $(read_flags --all -a) = true ]; then
+  elif read_flags --all -a; then
     log_info "Filter all files"
     files=.
   else
@@ -711,7 +559,7 @@ function git:move_forgotten_files_to_lfs { ## Move files to LFS if needed (conve
 
 ## --lose-unstaged-changes
 function git:reset_retained_lfs_files { ## Fix LSF error: Encountered X file(s) that should have been pointers, but weren't:
-  if [ $(read_flags --lose-unstaged-changes) != true ]; then
+  if ! read_flags --lose-unstaged-changes; then
     log_warn "
     This call will remove all unstaged files!
 
@@ -742,10 +590,10 @@ function git:assert_no_snapshot_fail_artifacts { ## Assert no new | diff .png fi
 
   log_info "Checking for Snapshot diff/new .png files in stage"
 
-  if [ $(read_flags --staged -s) = true ]; then
+  if read_flags --staged -s; then
     log_info "Filter staged files"
     files="$(git diff --diff-filter=d --name-only --cached | grep -E $regex || true)"
-  elif [ $(read_flags --commited -c) = true ]; then
+  elif read_flags --commited -c; then
     log_info "Filter files in last commit"
     files="$(git log --diff-filter=d --first-parent --name-only --oneline -n 1 | tail -n +2 | grep -E $regex || true)"
   else
@@ -766,7 +614,7 @@ function git:assert_no_snapshot_fail_artifacts { ## Assert no new | diff .png fi
 
 ## --fetch
 function git:delete_merged_features { ## Delete branches without upstream in origin (PR must be merged)
-  if [ $(read_flags --fetch) = true ]; then
+  if read_flags --fetch; then
     log_info 'Fetching branches, pruning ones that been removed from remote'
     git fetch origin --prune
   fi
@@ -787,7 +635,7 @@ function git:delete_merged_features { ## Delete branches without upstream in ori
 
   if [ "$count" -eq 0 ]; then
     log_success 'Merged features not found'
-    return 0
+    return
   fi
 
   log_info 'Found merged features:'
@@ -800,7 +648,7 @@ function git:delete_merged_features { ## Delete branches without upstream in ori
 
 ## --fetch
 function git:clean_remote { ## Remove too old and merged branches from origin
-  if [[ $(read_flags --fetch -f) = true ]]; then
+  if read_flags --fetch -f; then
     log_info "💿 Fetching remote with --prune ..."
     git fetch --prune
   fi
@@ -840,10 +688,10 @@ function git:clean_remote { ## Remove too old and merged branches from origin
 
 ## --fetch --remote --local --wildcard
 function git:delete_branches { ## Remove branches by wildcard
-  read_opt -w WILDCARD && read_opt --wildcard WILDCARD
+  read_opt -w --wildcard WILDCARD
   assert_defined WILDCARD
 
-  if [[ $(read_flags --fetch -f) = true ]]; then
+  if read_flags --fetch -f; then
     log_info "💿 Fetching remote with --prune ..."
     git fetch --prune
   fi
@@ -863,12 +711,12 @@ function git:delete_branches { ## Remove branches by wildcard
     log_warn "Found no branches to delete!"
   fi
 
-  if [[ $(read_flags --remote -r) = true ]]; then
+  if read_flags --remote -r; then
     log_info "🗑️  Removing remote branches"
     git push origin -d "${branchArr[@]}"
   fi
 
-  if [[ $(read_flags --local -l) = true ]]; then
+  if read_flags --local -l; then
     log_info "🗑️  Removing local branches"
     git branch -d "${branchArr[@]}"
   fi
@@ -878,10 +726,10 @@ function git:delete_branches { ## Remove branches by wildcard
 
 ## --fetch --remote --local --wildcard
 function git:delete_tags { ## Remove tags by wildcard
-  read_opt -w WILDCARD && read_opt --wildcard WILDCARD
+  read_opt -w --wildcard WILDCARD
   assert_defined WILDCARD
 
-  if [[ $(read_flags --fetch -f) = true ]]; then
+  if read_flags --fetch -f; then
     log_info "💿 Fetching remote with --tags ..."
     git fetch --tags --prune
   fi
@@ -901,7 +749,7 @@ function git:delete_tags { ## Remove tags by wildcard
     log_warn "Found no tags to delete!"
   fi
 
-  if [[ $(read_flags --remote -r) = true ]]; then
+  if read_flags --remote -r; then
     log_info "🗑️  Removing remote tags"
     local refsArr=()
     for tag in ${tagsArr[@]}; do
@@ -910,7 +758,7 @@ function git:delete_tags { ## Remove tags by wildcard
     git push -d origin "${refsArr[@]}"
   fi
 
-  if [[ $(read_flags --local -l) = true ]]; then
+  if read_flags --local -l; then
     log_info "🗑️  Removing local tags"
     git tag -d "${tagsArr[@]}"
   fi
@@ -920,7 +768,7 @@ function git:delete_tags { ## Remove tags by wildcard
 
 ## --branches --from --to
 function sync_branches { ## Sync listed branches between 2 remotes
-  read_opt -b BRANCHES && read_opt --branches BRANCHES
+  read_opt -b --branches BRANCHES
   read_opt --from FROM_REMOTE
   read_opt --to TO_REMOTE
   assert_defined BRANCHES FROM_REMOTE TO_REMOTE
@@ -933,7 +781,7 @@ function sync_branches { ## Sync listed branches between 2 remotes
 
 ## --from --branches
 function sync_branches_fetch { ## fetch (+ LFS --all) listed branches from remote
-  read_opt -b BRANCHES && read_opt --branches BRANCHES
+  read_opt -b --branches BRANCHES
   read_opt --from FROM_REMOTE
   assert_defined BRANCHES FROM_REMOTE
 
@@ -961,7 +809,7 @@ function sync_branches_fetch { ## fetch (+ LFS --all) listed branches from remot
 
 ## --to --branches
 function sync_branches_push { ## push listed branches to remote
-  read_opt -b BRANCHES && read_opt --branches BRANCHES
+  read_opt -b --branches BRANCHES
   read_opt --to TO_REMOTE
   assert_defined BRANCHES TO_REMOTE
 
