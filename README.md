@@ -47,18 +47,18 @@ Samples:
 
 ### Xfile template
 
-For fresh start in your repository run:
+For fresh start in your repository run script:
 ```sh
-curl -fsSL "https://raw.githubusercontent.com/amidaleet/Xfile/HEAD/Xfile_source/setup.sh" -o "setup.sh"
-chmod +x setup.sh
-./setup.sh
-rm -f setup.sh
+curl -fsSL "https://raw.githubusercontent.com/amidaleet/Xfile/3.0.0/Xfile_source/setup.sh" -o "setup.sh" # load setup script to local file
+chmod +x setup.sh # make script executable
+./setup.sh # load files with script
+rm -f setup.sh # remove setup script
 ```
 
-Or you can use command from the root of **this** repository.
+Or you can clone this **this** repository and call command from it's root dir.
 ```sh
 # Will create plain Xfile and copy impl files to provided directory
-x impl:xfile_init_copy --path "$HOME/Developer/my-app-repository"
+./Xfile impl:xfile_init_copy --path "$HOME/Developer/my-app-repository"
 ```
 
 ### Interactive shell (alias and autocomplete)

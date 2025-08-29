@@ -1,31 +1,31 @@
 #!/usr/bin/env bash
 
-log_blank_line() {
-  echo
-}
-
-log() {
+puts() {
   printf "%s\n" "$@"
 }
 
+log() {
+  printf "%s\n" "$@" 1>&2
+}
+
 log_next() {
-  printf "⏳ $(tput setaf 13)%s$(tput sgr0)\n" "$@"
+  printf "⏳ $(tput setaf 13)%s$(tput sgr0)\n" "$@" 1>&2
 }
 
 log_info() {
-  printf "👀 $(tput setaf 6)%s$(tput sgr0)\n" "$@"
+  printf "👀 $(tput setaf 6)%s$(tput sgr0)\n" "$@" 1>&2
 }
 
 log_warn() {
-  printf "❗️ $(tput setaf 3)%s$(tput sgr0)\n" "$@"
+  printf "❗️ $(tput setaf 3)%s$(tput sgr0)\n" "$@" 1>&2
 }
 
 log_error() {
-  printf "❌ $(tput setaf 1)%s$(tput sgr0)\n" "$@"
+  printf "❌ $(tput setaf 1)%s$(tput sgr0)\n" "$@" 1>&2
 }
 
 log_success() {
-  printf "✅ $(tput setaf 2)%s$(tput sgr0)\n" "$@"
+  printf "✅ $(tput setaf 2)%s$(tput sgr0)\n" "$@" 1>&2
 }
 
 _INPUT_ARR=()
