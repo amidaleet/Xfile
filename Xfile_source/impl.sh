@@ -109,7 +109,7 @@ function show_tasks_from { ## Print task descriptions list from file
 
 function help { ## Print "How to use?" info
   show_tasks_from "$0" "Xfile tasks:"
-  log_blank_line
+  log
   usage
 }
 
@@ -160,16 +160,12 @@ function task_in_context { ## Execute task as shell command passing all argument
   task "$@" "${_INPUT_ARR[@]:1}"
 }
 
-function task_out { ## Clean output, no Xfile logs
-  $0 "$@"
-}
-
 function log_move_to_task {
-  printf "🏃‍♀️‍➡️ $(tput setaf 6) in: %s > %s$(tput sgr0)\n" "$_X_TASK_STACK_STR" "$1"
+  printf "🏃‍♀️‍➡️ $(tput setaf 6) in: %s > %s$(tput sgr0)\n" "$_X_TASK_STACK_STR" "$1" 1>&2
 }
 
 function log_move_from_task {
-  printf "🏃‍♂️ $(tput setaf 6) out: %s $(tput sgr0)< %s\n" "$_X_TASK_STACK_STR" "$1"
+  printf "🏃‍♂️ $(tput setaf 6) out: %s $(tput sgr0)< %s\n" "$_X_TASK_STACK_STR" "$1" 1>&2
 }
 
 function push_task_stack {

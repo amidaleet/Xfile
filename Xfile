@@ -28,7 +28,7 @@ function pg { ## Playground for Xfile development
 }
 
 function bash_version { ## log bash version (which runs Xfile)
-  log "$BASH_VERSION"
+  puts "$BASH_VERSION"
 }
 
 # ---------- Setup ----------
@@ -153,24 +153,24 @@ function brew:check_dx_utils_env {
   if [ -z "$DX_SHELL_UTILS_DIR" ]; then
     log_error "DX_SHELL_UTILS_DIR is missing in ENV"
     log_info '.zprofile sample:'
-    echo
+    log
     # shellcheck disable=SC2016
     log \
       'export DX_SHELL_UTILS_DIR="$HOME/Development/dx_utils"' \
       'export PATH="$DX_SHELL_UTILS_DIR/bin:$PATH"'
-    echo
+    log
     return 64
   fi
 
   if [[ ! "$PATH" == *"$DX_SHELL_UTILS_DIR/bin:"* ]]; then
     log_error "DX_SHELL_UTILS_DIR is missing in PATH"
     log_info '.zprofile sample:'
-    echo
+    log
     # shellcheck disable=SC2016
     log \
       'export DX_SHELL_UTILS_DIR="$HOME/Development/dx_utils"' \
       'export PATH="$DX_SHELL_UTILS_DIR/bin:$PATH"'
-    echo
+    log
     return 64
   fi
 }
@@ -422,7 +422,7 @@ function ruby_bundle { ## run bundle cmd
   local BUNDLER_VERSION=$(< "$GIT_ROOT/Gemfile.lock" tail -1 | tr -d " ")
 
   if ! gem list --installed bundler --version "$BUNDLER_VERSION" >/dev/null; then
-    echo "💿 Installing bundler $BUNDLER_VERSION to install ruby dependencies"
+    log "💿 Installing bundler $BUNDLER_VERSION to install ruby dependencies"
     gem install bundler --version "$BUNDLER_VERSION" --config-file "$GIT_ROOT/.gemrc"
   fi
 
@@ -705,7 +705,7 @@ function git:delete_branches { ## Remove branches by wildcard
   if [[ ! "${#branchArr[@]}" -eq 0 ]]; then
     log_info "🗑️  Found next branches:"
     for branch in ${branchArr[@]}; do
-      log $branch
+      log "$branch"
     done
   else
     log_warn "Found no branches to delete!"
@@ -743,7 +743,7 @@ function git:delete_tags { ## Remove tags by wildcard
   if [[ ! "${#tagsArr[@]}" -eq 0 ]]; then
     log_info "🗑️  Found next tags:"
     for tag in ${tagsArr[@]}; do
-      log $tag
+      log "$tag"
     done
   else
     log_warn "Found no tags to delete!"

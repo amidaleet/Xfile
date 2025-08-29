@@ -22,16 +22,19 @@ function test_xfile { ## Test Xfile implementation (arguments handling)
     "$(task test_task_in_context VERSION="42  20" -t "two words" --force)"
   )
 
-  log "${test_logs[@]}"
+  local log has_problems
 
-  local log
   for log in "${test_logs[@]}"; do
-    if [[ "$log" == *'❌'* ]]; then
-      log_warn "Some Xfile tests has failed, see log above ^^^"
-      return 3
+    if [ -z "$log" ]; then continue; fi
+
+    if [ "$has_problems" != true ]; then
+      log_error "Xfile test failed with problems:"
     fi
+    log "$log"
+    has_problems=true
   done
 
+  if [ "$has_problems" = true ]; then return 3; fi
   log_success "Xfile test succeeded!"
 }
 
@@ -43,11 +46,11 @@ function test_var_is_true {
     local FT_TEST=$1
     if var_is_true FT_TEST; then
       if [ "$2" != true ]; then
-        log_error "'$1' should be treated as false"
+        puts "assert_bool: '$1' should be treated as false"
         has_problems=true
       fi
     elif [ "$2" != false ]; then
-      log_error "'$1' should be treated as true"
+      puts "assert_bool: '$1' should be treated as true"
       has_problems=true
     fi
   }
@@ -77,11 +80,11 @@ function test_assert_defined {
   local has_problems=false
 
   if ! assert_defined value_one value_two >/dev/null; then
-    log_error "Assert is triggered on existing values!"
+    puts "test_assert_defined: Assert is triggered on existing values!"
     has_problems=true
   fi
   if assert_defined not_present_value >/dev/null; then
-    log_error "Assert is not triggered on non-existing values!"
+    puts "test_assert_defined: Assert is not triggered on non-existing values!"
     has_problems=true
   fi
 
@@ -99,37 +102,37 @@ function test_args_parsing {
   local has_problems=false
 
   if ! read_flags --force -f; then
-    log_error "Missing expected --force -f flag!"
+    puts "test_args_parsing: Missing expected --force -f flag!"
     has_problems=true
   fi
 
   if ! read_flags --local -l; then
-    log_error "Missing expected --local -l flag!"
+    puts "test_args_parsing: Missing expected --local -l flag!"
     has_problems=true
   fi
 
   if read_flags --missing; then
-    log_error "Unexpected --missing flag resolved to true!"
+    puts "test_args_parsing: Unexpected --missing flag resolved to true!"
     has_problems=true
   fi
 
   if [ "$WORD" != "word" ]; then
-    log_error "$WORD != word"
+    puts "test_args_parsing: $WORD != word"
     has_problems=true
   fi
 
   if [ "$TEXT" != "Text with  3   words and spaces" ]; then
-    log_error "$TEXT != Text with  3   words and spaces"
+    puts "test_args_parsing: $TEXT != Text with  3   words and spaces"
     has_problems=true
   fi
 
   if [ "$VERSION" != "42  20" ]; then
-    log_error "$VERSION != 42  20"
+    puts "test_args_parsing: $VERSION != 42  20"
     has_problems=true
   fi
 
   if [ "$BETA_NUMBER" != "beta" ]; then
-    log_error "$BETA_NUMBER != beta"
+    puts "test_args_parsing: $BETA_NUMBER != beta"
     has_problems=true
   fi
 
@@ -143,10 +146,10 @@ function test_read_flags {
   local has_problems=false
 
   if read_flags -m --missing; then
-    log_error "Got unexpected --missing flag!"
+    puts "test_read_flags: Got unexpected --missing flag!"
   fi
   if ! read_flags -e --expected; then
-    log_error "Failed to read --expected flag!"
+    puts "test_read_flags: Failed to read --expected flag!"
   fi
 
   if var_is_true has_problems; then
@@ -160,15 +163,15 @@ function test_read_arr {
 
   local has_problems=false
   if [ ! "${#myarray[@]}" -eq 2 ]; then
-    log_error "Got ${#myarray[@]} elements instead of 2. Delimiter is $3"
+    puts "test_read_arr: Got ${#myarray[@]} elements instead of 2. Delimiter is $3"
     has_problems=true
   fi
   if [ "${myarray[0]}" != first ]; then
-    log_error "Missing first array element! Delimiter is $3"
+    puts "test_read_arr: Missing first array element! Delimiter is $3"
     has_problems=true
   fi
   if [ "${myarray[1]}" != second ]; then
-    log_error "Missing second array element! Delimiter is $3"
+    puts "test_read_arr: Missing second array element! Delimiter is $3"
     has_problems=true
   fi
 
@@ -189,17 +192,17 @@ function __task_in_context {
   local has_problems=false
 
   if ! read_flags --force -f; then
-    log_error "Missing expected --force -f flag!"
+    puts "test_task_in_context: Missing expected --force -f flag!"
     has_problems=true
   fi
 
   if [ "$VERSION" != "42  20" ]; then
-    log_error "$VERSION != 42  20"
+    puts "test_task_in_context: $VERSION != 42  20"
     has_problems=true
   fi
 
   if [ "$TEXT" != "two words" ]; then
-    log_error "$TEXT != two words"
+    puts "test_task_in_context: $TEXT != two words"
     has_problems=true
   fi
 
