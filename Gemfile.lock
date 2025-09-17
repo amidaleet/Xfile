@@ -382,7 +382,6 @@ PLATFORMS
   x86_64-darwin
 
 DEPENDENCIES
-  bundler (= 2.4.22)
   cocoapods (= 1.15.0)
   factory_bot (= 6.4.6)
   fastlane (= 2.220.0)
@@ -400,9 +399,6 @@ DEPENDENCIES
   solargraph (= 0.50.0)
   xcodeproj (= 1.24.0)
   yard (= 0.9.36)
-
-RUBY VERSION
-   ruby 3.2.2p53
 
 BUNDLED WITH
    2.4.22

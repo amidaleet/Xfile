@@ -2,7 +2,7 @@
 
 set -eo pipefail
 
-export GIT_ROOT="$(realpath .)"
+export GIT_ROOT="${GIT_ROOT:-"$(realpath .)"}"
 export SCRIPTS_FOLDER="$GIT_ROOT/tools/sh"
 
 source "$GIT_ROOT/Xfile_source/impl.sh"
@@ -35,14 +35,15 @@ function bash_version { ## log bash version (which runs Xfile)
 
 function install_deps { ## Install required dependencies for development
   task brew:install_ios_utils_from_brew
-  task install_ruby
   task install_python
-  task gems_update
+  task install_ruby
+  task gems_install
   task install_spm_deps
 }
 
 function install_ruby { ## Install Ruby version from .ruby-version file
-  rbenv install --skip-existing
+  local ruby_version="$(cat .ruby-version)"
+  task ruby_lang_installer --version "$ruby_version" --skip-existing
 }
 
 function install_python { ## Install Python version from .python-version file
@@ -55,7 +56,7 @@ function install_spm_deps { ## Install Swift dependencies from Mintfile
 
 function setup { ## Prepare environment for development
   task setup_git
-  task brew:install_ios_utils_from_brew
+  task install_deps
 
   log_success "Setup finished!"
 }
@@ -406,6 +407,56 @@ function jenkins_job_sync { ## Update Jobs code in repo <-> server
 
 # ---------- Utils ----------
 
+function install_chruby {
+  local DX_DIR_unexported=false
+  if [ -z "$DX_DIR" ]; then
+    DX_DIR_unexported=true
+    export DX_DIR="$HOME/Development/DX"
+  fi
+
+
+  mkdir -p "$DX_DIR/packs/Cellar/chruby"
+  rm -rf "$DX_DIR/packs/Cellar/chruby"
+  cp -rf "$GIT_ROOT/tools/sh/chruby" "$DX_DIR/packs/Cellar"
+
+  mkdir -p "$DX_DIR/packs/bin"
+  cd "$DX_DIR/packs/bin"
+  rm -f chruby-init chruby-exec
+  ln -s "../Cellar/chruby/chruby-init" chruby-init
+  ln -s "../Cellar/chruby/chruby-exec" chruby-exec
+
+  cd "$GIT_ROOT"
+
+  log_success "Installed chruby-init to $DX_DIR/packs/bin"
+  log
+  if [ "$DX_DIR_unexported" = true ]; then
+    log_warn "(Must have) To enable installed commands calls from Terminal" "Put to ~/.zprofile for ZSH (OR ~/.bash_profile for BASH):"
+    log "export DX_DIR=\"\$HOME/Development/DX\""
+    log "export PATH=\"\$DX_DIR/packs/bin:\$PATH\""
+    log
+  fi
+  log_info "(Recomended) To enable chruby in Terminal and pick ruby version" "Put to ~/.zprofile for ZSH (OR ~/.bash_profile for BASH):"
+  log "eval \"\$(chruby-init core)\"" "chruby $(get_ruby_repository_version)"
+  log
+  log_info "(Optionaly) To enable auto ruby switch in any dir" "Put next code to ~/.zshrc for ZSH (OR ~/.bashrc for BASH):"
+  log "eval \"\$(chruby-init auto)\""
+}
+
+function get_ruby_repository_version {
+  cat "$GIT_ROOT/.ruby-version"
+}
+
+chruby_activate_repository_version() { ## Fill ENV with current ruby version
+  if ! command -v chruby >/dev/null; then
+    log "No chruby command in script scope, will source chruby.sh from repo"
+    source "$TOOLS_DIR/sh/chruby/chruby.sh"
+  fi
+
+  local ruby_version="$(get_ruby_repository_version)"
+  log_info "Setting ruby $ruby_version"
+  chruby "$ruby_version"
+}
+
 function fastlane { ## run fastlane lane / action
   ruby_bundle exec fastlane "$@"
 }
@@ -419,35 +470,122 @@ function ruby_run { ## run ruby cmd in repository bundle context
 }
 
 function ruby_bundle { ## run bundle cmd
-  local BUNDLER_VERSION=$(< "$GIT_ROOT/Gemfile.lock" tail -1 | tr -d " ")
-
-  if ! gem list --installed bundler --version "$BUNDLER_VERSION" >/dev/null; then
-    log "💿 Installing bundler $BUNDLER_VERSION to install ruby dependencies"
-    gem install bundler --version "$BUNDLER_VERSION" --config-file "$GIT_ROOT/.gemrc"
-  fi
-
+  chruby_activate_repository_version
   bundle "$@"
 }
 
+function gems_install_bundle {
+  local BUNDLER_VERSION=$(grep -A 1 "BUNDLED WITH" "$GIT_ROOT/Gemfile.lock" | grep -oE "[0-9]+.[0-9]+.[0-9]+")
+
+  if gem list --installed bundler --version "$BUNDLER_VERSION" >/dev/null; then
+    log "Bundler $BUNDLER_VERSION is already installed"
+    return
+  fi
+
+  gem install bundler --version "$BUNDLER_VERSION" --config-file "$GIT_ROOT/.gemrc"
+}
+
 function gems_freeze { ## Forbid changes in Gemfile.lock
-  ruby_bundle config set frozen true
+  ruby_bundle config set --local frozen true
 }
 
 function gems_defrost { ## Allow changes in Gemfile.lock
-  ruby_bundle config set frozen false
+  ruby_bundle config set --local frozen false
 }
 
-function gems_update { ## Resolve and setup gems from Gemfile (ruby) and Pluginfile (fastlane)
+function gems_update { ## Update gems and Gemfile.lock
+  ruby_bundle update
+}
+
+function gems_install { ## Setup locked gems from Gemfile.lock
   ruby_bundle install
+}
+
+## --version --skip-existing
+function ruby_lang_installer {
+  local ruby_version short_ruby_version target_dir sources_dir
+
+  read_opt --version ruby_version
+  assert_defined ruby_version
+
+  short_ruby_version="${ruby_version%.*}"
+  target_dir="$HOME/.rubies/${ruby_version}"
+
+  log_info "Resolved versions:"
+  log "$ruby_version" "$short_ruby_version"
+
+  if read_flags --skip-existing; then
+    if [ -x "$target_dir/bin/ruby" ]; then
+      log_warn "Ruby seems to be already present at chruby folder:"
+      log "$target_dir"
+      log "Aborting..."
+      return
+    fi
+    if [ -x "$HOME/.rbenv/versions/$ruby_version/bin/ruby" ]; then
+      log_warn "Ruby seems to be already present at rbenv folder:"
+      log "$target_dir"
+      log "Aborting..."
+      return
+    fi
+  fi
+
+  mkdir -p "$OUTPUT_DIR"
+  cd "$OUTPUT_DIR"
+
+  sources_dir="ruby-${ruby_version}"
+  log_info "Loading ruby to: $OUTPUT_DIR/$sources_dir"
+  rm -rf "$sources_dir"
+  curl "https://cache.ruby-lang.org/pub/ruby/${short_ruby_version}/ruby-${ruby_version}.tar.xz" | tar -x
+
+  log_info "Resolving lib dirs..."
+  local gmp_path libyaml_path openssl_path readline_path zlib_path
+
+  if command -v brew >/dev/null; then
+    log "Using lib dirs from brew:"
+    gmp_path="$(brew --prefix gmp)"
+    libyaml_path="$(brew --prefix libyaml)"
+    openssl_path="$(brew --prefix openssl)"
+    readline_path="$(brew --prefix readline)"
+    zlib_path="$(brew --prefix zlib)"
+  elif [ -d "$DX_SHELL_UTILS_DIR" ]; then
+    log "Using lib dirs from dx_utils: $DX_SHELL_UTILS_DIR"
+    gmp_path="$DX_SHELL_UTILS_DIR/opt/gmp"
+    libyaml_path="$DX_SHELL_UTILS_DIR/opt/libyaml"
+    openssl_path="$DX_SHELL_UTILS_DIR/opt/openssl"
+    readline_path="$DX_SHELL_UTILS_DIR/opt/readline"
+    zlib_path="$DX_SHELL_UTILS_DIR/opt/zlib"
+  fi
+  log "Resolved lib dirs:" "$gmp_path" "$libyaml_path" "$openssl_path" "$readline_path" "$zlib_path"
+
+  log_info "Compiling ruby..."
+  # script source: https://github.com/postmodern/chruby/wiki/Ruby
+  cd "$sources_dir"
+  ./configure \
+    --prefix="$target_dir" \
+    --with-gmp-dir="$gmp_path" \
+    --with-libyaml-dir="$libyaml_path" \
+    --with-openssl-dir="$openssl_path" \
+    --with-readline-dir="$readline_path" \
+    --with-zlib-dir="$zlib_path"
+  make
+  make install
 }
 
 # ---------- Git ----------
 
+function amend { ## git commit --amend
+  git commit --amend "$@"
+}
+
 function rebase { ## rebase on passed remote branch
   local BRANCH=${1-main}
 
-  git fetch origin $BRANCH
-  git rebase -i origin/$BRANCH
+  git fetch origin "$BRANCH"
+  git rebase -i "origin/$BRANCH"
+}
+
+function push { ## git push
+  git push "$@"
 }
 
 ## main release/ --force
@@ -464,9 +602,9 @@ function ff { ## fast-forward reset branch
     fi
   fi
 
-  git fetch origin $BRANCH
-  git checkout $BRANCH
-  git reset --hard origin/$BRANCH
+  git fetch origin "$BRANCH"
+  git checkout "$BRANCH"
+  git reset --hard "origin/$BRANCH"
 }
 
 ## --ticket --index --cherry-pick --surname

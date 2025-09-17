@@ -144,9 +144,9 @@ function run_task { ## Execute task as shell command
 
 function child_task { ## Execute child Xfile task
   if [ -n "$2" ]; then
-    "$1" "$2" "${_INPUT_ARR[@]:1}"
+    "$1" "$2" "${_SCRIPT_ARGS_ARR[@]:1}"
   else
-    "$1" "${_INPUT_ARR[@]:1}"
+    "$1" "${_SCRIPT_ARGS_ARR[@]:1}"
   fi
 }
 
@@ -157,7 +157,7 @@ function task {
 }
 
 function task_in_context { ## Execute task as shell command passing all arguments from parent task
-  task "$@" "${_INPUT_ARR[@]:1}"
+  task "$@" "${_SCRIPT_ARGS_ARR[@]:1}"
 }
 
 function log_move_to_task {

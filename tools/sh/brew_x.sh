@@ -12,6 +12,9 @@ top_level_deps=(
   yq         # YAML formatter и парсер
   watchman   # Hot Reloading React Native
   rbenv      # Менеджер версий ruby
+  chruby     # Менеджер для смены активной версии ruby
+  bison gmp libffi libyaml openssl readline zlib # ruby build requiments
+  node n npm # менеджеры зависимостей для работы с node и JS
   pyenv      # Менеджер версий python
   aria2      # Многопоточная загрузка файлов
   xcbeautify # Форматтер логов xcodebuild команд
@@ -118,7 +121,7 @@ function repack_installed_deps {
       fi
     done
   done
-  log_info 'Resolved opt symlinks for packing:'
+  log_info 'Resolved opt dir symlinks for packing:'
   log "${deps_opt_symlinks[@]}"
 
   log_next "Resolving needed lib dir symlinks list..."
@@ -132,8 +135,18 @@ function repack_installed_deps {
       fi
     done
   done
-  log_info 'Resolved lib symlinks for packing:'
+  log_info 'Resolved lib dir symlinks for packing:'
   log "${deps_lib_symlinks[@]}"
+
+  log_next "Resolving special cases..."
+  for dep in "${repo_deps[@]}"; do
+    if [ "$dep" = 'npm' ]; then
+      # У npm нет своего Cellar, он размещается внутри node и требует lib/node_modules
+      deps_symlinks+=("$brew_bins_dir/npm")
+      deps_lib_symlinks+=("$brew_root/lib/node_modules")
+      log "Added npm as special case"
+    fi
+  done
 
   # We must provide relative path in order to eliminate parent absolute folders
   # zip resolves path relative to workdir
@@ -166,7 +179,7 @@ function repack_installed_deps {
 
   cd "$brew_root"
   # -y means store symlinks in ./bin, not resolved files
-  zip -y -r "$zip_path" "${path_to_pack[@]}"
+  zip -qyr "$zip_path" "${path_to_pack[@]}"
   cd -
 
   log_success '✅ Repack archive is ready!'

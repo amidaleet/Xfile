@@ -36,6 +36,7 @@ logback.log
 
 # Ruby Bundler
 .vendor/
+.bundle/
 
 # Python virtual environment
 venv/
