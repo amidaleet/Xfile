@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+
+case "$1" in
+  core)
+    dir="$(realpath "$0")"; dir="${dir%/*}"
+    cat "$dir/chruby.sh"
+    ;;
+  auto)
+    dir="$(realpath "$0")"; dir="${dir%/*}"
+cat << HEREDOC
+if ! command -v chruby >/dev/null; then
+  source "$dir/chruby.sh"
+fi
+
+HEREDOC
+    cat "$dir/auto.sh"
+    ;;
+  *)
+    echo "echo 'chruby-init failed!'" 2>&1
+    echo "echo 'chruby-init should be called with either 'core' or 'auto', like:'" 2>&1
+    echo "echo 'eval \"\$(chruby-init core)\"'" 2>&1
+    exit 1
+    ;;
+esac

@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+_SCRIPT_ARGS_ARR=("$@")
+
 puts() {
   printf "%s\n" "$@"
 }
@@ -28,46 +30,6 @@ log_success() {
   printf "✅ $(tput setaf 2)%s$(tput sgr0)\n" "$@" 1>&2
 }
 
-_INPUT_ARR=()
-
-# Parse input to args that looks like:
-#
-# name='Large string argument'
-# --name value
-# -name value
-# --flag
-# -f
-# positional value
-function cache_args {
-  local param=''
-  local word
-
-  for word in "$@"; do
-    if [[ "$word" =~ ^(-|--).*$ ]]; then # flag or opt name (-a || --arg)
-      if [ -n "$param" ]; then _INPUT_ARR+=("$param"); fi
-      param=$word
-      continue
-    fi
-
-    if [[ "$word" =~ ^[a-zA-Z0-9_]+=.*$ ]]; then # named arg (ARG=value)
-      if [ -n "$param" ]; then _INPUT_ARR+=("$param"); fi
-      _INPUT_ARR+=("$word")
-      param=''
-      continue
-    fi
-
-    if [ -n "$param" ]; then # opt value
-        _INPUT_ARR+=("$param=$word")
-        param=''
-        continue
-    fi
-
-    _INPUT_ARR+=("$word") # simple positional value
-  done
-
-  if [ -n "$param" ]; then _INPUT_ARR+=("$param"); fi
-}
-
 # Makefile style 'ARG=VALUE' arguments parser
 #
 # - Usage:
@@ -78,7 +40,7 @@ function read_args {
   local name
 
   for name in "$@"; do
-    for argument in "${_INPUT_ARR[@]}"; do
+    for argument in "${_SCRIPT_ARGS_ARR[@]}"; do
       if [[ $argument == "$name="* ]]; then
         argument="${argument/"$name="/}"
         eval "$name='$argument'"
@@ -88,29 +50,32 @@ function read_args {
   done
 }
 
-# Read getopts-like formatted args: -<flag> <value> | --<name> <value>
+# Read getopts-like formatted args: -<name> <value> | --<name> <value>
 #
-# $1 – flag name, format -f | --flag
+# $1 – value name, format -n | --name
 # $2 – var name
 function read_opt {
   local var_name=${*: -1}
   local opt_name
   local argument
+  local has_match=false
 
   for opt_name in "${@:1:$#-1}"; do
-    for argument in "${_INPUT_ARR[@]}"; do
-      if [[ $argument == "$opt_name="* ]]; then
-        argument="${argument/"$opt_name="/}"
+    for argument in "${_SCRIPT_ARGS_ARR[@]}"; do
+      if [ "$has_match" = true ]; then
         eval "$var_name='$argument'"
         return
+      elif [ "$argument" = "$opt_name" ]; then
+        has_match=true
       fi
     done
+    has_match=false
   done
 }
 
-# Parse bash array form string arg: (-|--)<flag> "<element0> <element1>"
+# Parse bash array form string arg: (-|--)<array_name> "<element 0><separator><element 1>"
 #
-# $1 – flag name, format -f | --flag
+# $1 – arg name, format -a | --array
 # $2 – var name
 # $3 – separator symbol (to use as IFS)
 function read_arr {
@@ -118,12 +83,14 @@ function read_arr {
   local arr_name=$2
   local separator=$3
   local argument
+  local has_match=false
 
-  for argument in "${_INPUT_ARR[@]}"; do
-    if [[ $argument == "$opt_name="* ]]; then
-      argument="${argument/"$opt_name="/}"
+  for argument in "${_SCRIPT_ARGS_ARR[@]}"; do
+    if [ "$has_match" = true ]; then
       str_to_arr "$argument" "$arr_name" "$separator"
       return
+    elif [ "$argument" = "$opt_name" ]; then
+      has_match=true
     fi
   done
 }
@@ -166,13 +133,13 @@ function read_flags {
   for name in "$@"; do
     short_flag="${name/-/}"
     if [ "${#short_flag}" = 1 ]; then # one letter flag can be mixed with others: "-b" is in "-abc"
-      for argument in "${_INPUT_ARR[@]}"; do
+      for argument in "${_SCRIPT_ARGS_ARR[@]}"; do
         if [[ $argument =~ ^-[a-zA-Z]*"${short_flag}"[a-zA-Z]* ]]; then
           return
         fi
       done
     else
-      for argument in "${_INPUT_ARR[@]}"; do
+      for argument in "${_SCRIPT_ARGS_ARR[@]}"; do
         if [ "$argument" = "$name" ]; then
           return
         fi
@@ -250,5 +217,3 @@ function value_in_list {
 function func_defined {
   declare -F "$1" > /dev/null
 }
-
-cache_args "$@"

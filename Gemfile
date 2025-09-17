@@ -2,15 +2,6 @@
 
 source 'http://rubygems.org'
 
-ruby '3.2.2'
-
-# bundler 2.5.7 does not work with rbenv
-# Example:
-# bundle show cocoapods outputs:
-# ~/.local/share/gem/ruby/3.2.0/gems/cocoapods-1.15.0)
-# And it should be
-# ~/.rbenv/versions/3.2.2/lib/ruby/gems/3.2.0/gems/cocoapods-1.15.0
-gem 'bundler', '2.4.22'
 gem 'cocoapods', '1.15.0'
 gem 'fastlane', '2.220.0'
 gem 'nokogiri', '1.16.3' # manually adding x86_64-darwin in .lock

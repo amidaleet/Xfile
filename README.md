@@ -49,7 +49,7 @@ Samples:
 
 For fresh start in your repository run script:
 ```sh
-curl -fsSL "https://raw.githubusercontent.com/amidaleet/Xfile/3.0.0/Xfile_source/setup.sh" -o "setup.sh" # load setup script to local file
+curl -fsSL "https://raw.githubusercontent.com/amidaleet/Xfile/4.0.0/Xfile_source/setup.sh" -o "setup.sh" # load setup script to local file
 chmod +x setup.sh # make script executable
 ./setup.sh # load files with script
 rm -f setup.sh # remove setup script
@@ -273,9 +273,9 @@ x log "Some words" # task defined in Xfile_source/xlib
 x task_args my_function # task defined in Xfile_source/impl
 ```
 
-You can `source` additional scripts with tasks definition. 
+You can `source` additional scripts with tasks definition.
 
-And redefine your `Xfile` `help` function to get plugin tasks listed in `help` output. 
+And redefine your `Xfile` `help` function to get plugin tasks listed in `help` output.
 
 It may be useful to allow place user defined extension file with ENV and tasks in your repo (added to `.gitignore`), like:
 
@@ -299,7 +299,7 @@ copy_commit_msg() {
 }
 ```
 
-It won't be listed in the `help` output. 
+It won't be listed in the `help` output.
 
 However it will be present in scope and still can be called via `x`.
 
@@ -318,7 +318,7 @@ private:copy_commit_msg() {}
 
 Instead of sourcing all the Xfiles as plugins in your main Xfile, it may be convenient to define wrapper task functions and invoke child_task on demand.
 
-- Thats prevents scope pollution and sourcing overhead. 
+- Thats prevents scope pollution and sourcing overhead.
 - Also task names collision is not a problem with this method.
 
 ```sh
