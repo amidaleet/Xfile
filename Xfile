@@ -8,10 +8,10 @@ export SCRIPTS_FOLDER="$GIT_ROOT/tools/sh"
 source "$GIT_ROOT/Xfile_source/impl.sh"
 source "$GIT_ROOT/Xfile_source/tests.sh"
 
+if [ -f "$GIT_ROOT/usr/xprofile" ]; then source "$GIT_ROOT/usr/xprofile"; fi
+
 export IS_CI=false
-if [[ -n "$JENKINS_HOME" || -n "$JENKINS_URL" ]]; then
-  IS_CI=true
-fi
+if [ -n "$JENKINS_HOME" ] || [ -n "$JENKINS_URL" ]; then IS_CI=true; fi
 
 export FASTLANE_SKIP_UPDATE_CHECK=1
 export FASTLANE_HIDE_CHANGELOG=1
@@ -194,7 +194,7 @@ function xcode:set_header { ## Set org Xcode header template in user directory
 }
 
 # Idea source: https://blog.kulman.sk/faster-way-to-download-and-install-xcode/
-## --version --start_step
+## --version --start_step --beta_number --apple-silicon --universal --apps_dir --cookie
 function xcode:install { ## Install Xcode of specified version
   child_task "$SCRIPTS_FOLDER/Xcode_x.sh" xcode:install
 }
@@ -573,6 +573,10 @@ function ruby_lang_installer {
 
 # ---------- Git ----------
 
+function commit {
+  git commit "$@"
+}
+
 function amend { ## git commit --amend
   git commit --amend "$@"
 }
@@ -607,37 +611,8 @@ function ff { ## fast-forward reset branch
   git reset --hard "origin/$BRANCH"
 }
 
-## --ticket --index --cherry-pick --surname
-function feature { ## create feature branch
-  read_opt -s --surname SURNAME
-  read_opt -t --ticket TICKET
-  read_opt -i --index INDEX
-  local SURNAME=${MY_SURNAME-$SURNAME}
-  assert_defined TICKET
-
-  if [ -z "$SURNAME" ]; then
-    log_error "Missing SURNAME value"
-    log ""
-    log_warn "Add next string to your ~/.zshrc:"
-    log "export MY_SURNAME='last_name'"
-    log ""
-    log_warn "Or pass -s arg:"
-    log "x feature -t SDMI-0001 -s last_name"
-  fi
-
-  if [[ "$TICKET" == */* ]]; then
-    INDEX="${TICKET#*/}"
-    TICKET="${TICKET%/*}"
-  fi
-
-  local name="feature/$SURNAME/$TICKET/${INDEX-0}"
-
-  if read_flags --cp --cherry-pick; then
-    log "Got CP flag, adding postfix"
-    name="$name-cp"
-  fi
-
-  git checkout -b "$name"
+function feature {
+  git checkout -b "feature/$1"
 }
 
 ## --version
