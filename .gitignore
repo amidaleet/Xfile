@@ -47,3 +47,6 @@ logs/
 output/
 **/tmp
 .cache
+
+# local user files
+usr/

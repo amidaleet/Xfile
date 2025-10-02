@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-function test_xfile { ## Test Xfile implementation (arguments handling)
+function test_xfile() { ## Test Xfile implementation (arguments handling)
   local test_logs=(
     "$(task test_var_is_true)"
     "$(task test_assert_defined)"
@@ -38,7 +38,7 @@ function test_xfile { ## Test Xfile implementation (arguments handling)
   log_success "Xfile test succeeded!"
 }
 
-function test_var_is_true {
+test_var_is_true() {
   local has_problems=false
 
   assert_bool() {
@@ -74,7 +74,7 @@ function test_var_is_true {
   log_success "var_is_true works as expected!"
 }
 
-function test_assert_defined {
+test_assert_defined() {
   local value_one=1
   local value_two=work
   local has_problems=false
@@ -94,7 +94,7 @@ function test_assert_defined {
   log_success "assert_defined works as expected!"
 }
 
-function test_args_parsing {
+test_args_parsing() {
   read_opt -w --word WORD
   read_opt -t --text TEXT
   read_args VERSION BETA_NUMBER
@@ -142,7 +142,8 @@ function test_args_parsing {
 
   log_success "Args parsed as expected!"
 }
-function test_read_flags {
+
+test_read_flags() {
   local has_problems=false
 
   if read_flags -m --missing; then
@@ -158,7 +159,7 @@ function test_read_flags {
   log_success "Flags parsed as expected!"
 }
 
-function test_read_arr {
+test_read_arr() {
   read_arr -a myarray "$3"
 
   local has_problems=false
@@ -181,11 +182,11 @@ function test_read_arr {
   log_success "Array parsed as expected!"
 }
 
-function test_task_in_context {
+test_task_in_context() {
   task_in_context __task_in_context
 }
 
-function __task_in_context {
+__task_in_context() {
   read_opt -t --text TEXT
   read_args VERSION
 
