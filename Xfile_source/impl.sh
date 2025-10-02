@@ -4,32 +4,11 @@ source "$GIT_ROOT/Xfile_source/xlib.sh"
 
 # ---------- Xfile core ----------
 
-function install_xfile { ## Install autocompletion
-  impl:install_xfile "$@"
-}
-
-function impl:install_xfile {
-  cp -f Xfile_source/completion.sh "$HOME/.xfile_completion"
-
-  if grep "source \"\$HOME/.xfile_completion\"" "$HOME/.zshrc" || grep "source \"\$HOME/.xfile_completion\"" "$HOME/.zprofile"; then
-    log_success "Source for xfile_completion is already set in ~/.zshrc"
-  else
-    log "Adding completion script as source..."
-
-    echo >>"$HOME/.zshrc"
-    echo "source \"\$HOME/.xfile_completion\"" >>"$HOME/.zshrc"
-
-    log_info "Xfile auto-completion has been added to your ~/.zshrc file"
-    log_warn "Restart Terminal session to take effect"
-    log "Than you'll be able to auto-complete Xfile args with tab button'"
-  fi
-}
-
-function task_args { ## List task args
+function task_args { ## list $1 task args from $2 file (default: $0 – this Xfile)
   impl:task_args "$@" || true
 }
 
-function impl:task_args {
+function impl:task_args() { ## list $1 task args from $2 file (default: $0 – this Xfile)
   local file=${2:-$0}
   local funcDefStr=()
   while IFS= read -r line; do
@@ -47,11 +26,11 @@ function impl:task_args {
   fi
 }
 
-function task_names { ## List available task names
+function task_names { ## list available tasks in this Xfile
   show_task_names_from "$0"
 }
 
-function show_task_names_from { ## Print task names list from file
+function show_task_names_from { ## print task names list from $1 file
   if [ ! -f "$1" ]; then
     return
   fi
@@ -72,7 +51,7 @@ function show_task_names_from { ## Print task names list from file
     '
 }
 
-function show_tasks_from { ## Print task descriptions list from file
+function show_tasks_from { ## print task descriptions list from $1 file, $2 – optional output header
   if [ ! -f "$1" ]; then
     log_warn "Found missing file while reading tasks: $1"
     return
@@ -86,7 +65,7 @@ function show_tasks_from { ## Print task descriptions list from file
   local picked_lines
   picked_lines=$(grep -E '(^function [a-zA-Z0-9_:]+(\(\))? {.*)|(^# ----------).*' "$1" || true)
   if [ -z "$picked_lines" ]; then
-    log_warn "No any visible tasks! You may add some 'function task_name {' to your file"
+    log_warn "No any visible tasks! You shall define some like 'function my_task() {' in your Xfile"
     return
   fi
 
@@ -107,13 +86,13 @@ function show_tasks_from { ## Print task descriptions list from file
     '
 }
 
-function help { ## Print "How to use?" info
+function help { ## print full "How to use?" info for this Xfile
   show_tasks_from "$0" "Xfile tasks:"
   log
   usage
 }
 
-function usage { ## Print usage instructions
+function usage { ## print common usage instructions for Xfile
   echo "$(tput setaf 4)# To run task:$(tput sgr0)"
   echo "$0 <task> <args>"
   echo "x <task> <args>"
@@ -123,26 +102,36 @@ function usage { ## Print usage instructions
   echo "./Xfile install_xfile"
 }
 
-function run_task { ## Execute task as shell command
-  local task_name=$1
+function begin_xfile_task { ## execute task $1 as shell command passing following call args
+  local task_name="${_SCRIPT_ARGS_ARR[0]}"
 
   if value_in_list "$task_name" "" help --help; then
     help
     return
   fi
 
-  if ! func_defined "$task_name"; then
+  if ! declare -F "$task_name" >/dev/null; then
     log_warn "🤔 No task named: '$task_name'!"
     log 'Maybe misspelled?'
     log 'Try: x help'
-    log 'Call args:' "$@"
+    log 'Call args:' "${_SCRIPT_ARGS_ARR[@]}"
     return 4
   fi
 
-  "$@"
+  "${_SCRIPT_ARGS_ARR[@]}"
 }
 
-function child_task { ## Execute child Xfile task
+function task { ## run task (as bash process) passing call args
+  log_move_to_task "$1"
+  $0 "$@"
+  log_move_from_task "$1"
+}
+
+function task_in_context { ## run task (as bash process) passing script args after call args
+  task "$@" "${_SCRIPT_ARGS_ARR[@]:1}"
+}
+
+function child_task { ## run task in $1 "child" Xfile forwarding script args, $2 – optional task name (may be in script args)
   if [ -n "$2" ]; then
     "$1" "$2" "${_SCRIPT_ARGS_ARR[@]:1}"
   else
@@ -150,25 +139,15 @@ function child_task { ## Execute child Xfile task
   fi
 }
 
-function task {
-  log_move_to_task "$1"
-  $0 "$@"
-  log_move_from_task "$1"
-}
-
-function task_in_context { ## Execute task as shell command passing all arguments from parent task
-  task "$@" "${_SCRIPT_ARGS_ARR[@]:1}"
-}
-
-function log_move_to_task {
+log_move_to_task() {
   printf "🏃‍♀️‍➡️ $(tput setaf 6) in: %s > %s$(tput sgr0)\n" "$_X_TASK_STACK_STR" "$1" 1>&2
 }
 
-function log_move_from_task {
+log_move_from_task() {
   printf "🏃‍♂️ $(tput setaf 6) out: %s $(tput sgr0)< %s\n" "$_X_TASK_STACK_STR" "$1" 1>&2
 }
 
-function push_task_stack {
+push_task_stack() {
   if [ -z "$_X_TASK_STACK_STR" ]; then
     _X_TASK_STACK_STR=$1
   else
@@ -180,43 +159,58 @@ function push_task_stack {
 
 # ---------- Xfile setup ----------
 
-## --path
-function impl:xfile_init_load { ## Loads sources and Xfile sample to provided path
-  read_opt -p --path target_path
-  assert_defined target_path
-
-  cd "$target_path"
-  /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amidaleet/Xfile/HEAD/Xfile_source/setup.sh)"
+function install_xfile { ## install autocompletion to zsh
+  impl:install_xfile "$@"
 }
 
-## --path
-function impl:xfile_init_copy { ## Copies sources and Xfile sample to provided path
-  read_opt -p --path target_path
-  assert_defined target_path
+impl:install_xfile() {
+  cp -f Xfile_source/completion.sh "$HOME/.xfile_completion"
 
-  cd "$target_path"
+  if grep "source \"\$HOME/.xfile_completion\"" "$HOME/.zshrc" || grep "source \"\$HOME/.xfile_completion\"" "$HOME/.zprofile"; then
+    log_success "Source for xfile_completion is already set in ~/.zshrc"
+  else
+    log "Adding completion script as source..."
+
+    echo >>"$HOME/.zshrc"
+    echo "source \"\$HOME/.xfile_completion\"" >>"$HOME/.zshrc"
+
+    log_info "Xfile auto-completion has been added to your ~/.zshrc file"
+    log_warn "Restart Terminal session to take effect"
+    log "Than you'll be able to auto-complete Xfile args with tab button'"
+  fi
+}
+
+function xfile_init_load() { ## load sources and Xfile sample to $1 dir from $2 git ref
+  if [ -z "$1" ]; then return 3; fi
+
+  cd "$1"
+  export XFILE_REF=${2:-main}
+  bash <<<"$(curl -fsS https://raw.githubusercontent.com/amidaleet/Xfile/$XFILE_REF/Xfile_source/setup.sh)"
+}
+
+function xfile_init_copy() { ## copy sources and Xfile sample to $1 dir
+  if [ -z "$1" ]; then return 3; fi
+
+  cd "$1"
   rm -rf Xfile_source
   mkdir -p Xfile_source
   cd "$GIT_ROOT"
 
-  cp "$GIT_ROOT/Xfile_source"/* "$target_path/Xfile_source"
-
-  impl:write_xfile_template "$target_path/Xfile"
-}
-
-function impl:write_xfile_template {
-  cat <<'TEXT' > "$1"
+  cp "$GIT_ROOT/Xfile_source"/* "$1/Xfile_source"
+  if [ ! -f "$1/Xfile" ]; then
+    cat <<'HEREDOC' >"$1/Xfile"
 #!/usr/bin/env bash
 
 set -eo pipefail
 
-export GIT_ROOT="$(realpath .)"
+export GIT_ROOT="${GIT_ROOT:-"$(realpath .)"}"
 
-source "$GIT_ROOT/Xfile_source/xlib.sh"
+source "$GIT_ROOT/Xfile_source/impl.sh"
 
-run_task "$@"
-TEXT
-  chmod +x "$1"
+begin_xfile_task
+HEREDOC
+    chmod +x "$1/Xfile"
+  fi
 }
 
 push_task_stack "$1"

@@ -25,11 +25,11 @@ top_level_deps=(
 # ---------- Brew setup ----------
 
 function install_brew_native {
-  /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+  /bin/bash -c "$(curl -fsS https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 }
 
 function install_brew_x86_64 {
-  arch -x86_64 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+  arch -x86_64 /bin/bash -c "$(curl -fsS https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 }
 
 # ---------- Deps ----------
@@ -186,4 +186,4 @@ function repack_installed_deps {
   log "$zip_path"
 }
 
-run_task "$@"
+begin_xfile_task

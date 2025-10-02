@@ -2,40 +2,43 @@
 
 _SCRIPT_ARGS_ARR=("$@")
 
-puts() {
+function puts() { ## print call args to stdout
   printf "%s\n" "$@"
 }
 
-log() {
+function log() { ## print call args to stderr
   printf "%s\n" "$@" 1>&2
 }
 
-log_next() {
+function log_next() { ## print call args to stderr, with color and ⏳ emoji
   printf "⏳ $(tput setaf 13)%s$(tput sgr0)\n" "$@" 1>&2
 }
 
-log_info() {
+function log_info() { ## print call args to stderr, with color and 👀 emoji
   printf "👀 $(tput setaf 6)%s$(tput sgr0)\n" "$@" 1>&2
 }
 
-log_warn() {
+function log_warn() { ## print call args to stderr, with color and ❗️ emoji
   printf "❗️ $(tput setaf 3)%s$(tput sgr0)\n" "$@" 1>&2
 }
 
-log_error() {
+function log_error() { ## print call args to stderr, with color and ❌ emoji
   printf "❌ $(tput setaf 1)%s$(tput sgr0)\n" "$@" 1>&2
 }
 
-log_success() {
+function log_success() { ## print call args to stderr, with color and ✅ emoji
   printf "✅ $(tput setaf 2)%s$(tput sgr0)\n" "$@" 1>&2
 }
 
-# Makefile style 'ARG=VALUE' arguments parser
-#
-# - Usage:
-# read_args "LOGIN" "PASS"
-# echo "login = $LOGIN"
-function read_args {
+function set_errexit_when_command_fails() { ## turn on/off errexit script option. $1 - true/false (default: true)
+  if [ "$1" = false ]; then set +o errexit; else set -o errexit; fi
+}
+
+function set_pipefail_with_rightmost_non_zero_status() { ## turn on/off pipefail script option. $1 - true/false (default: true)
+  if [ "$1" = false ]; then set +o pipefail; else set -o pipefail; fi
+}
+
+function read_args() { ## read Makefile styled script args (like: ARG=VALUE) named as call args
   local argument
   local name
 
@@ -50,11 +53,7 @@ function read_args {
   done
 }
 
-# Read getopts-like formatted args: -<name> <value> | --<name> <value>
-#
-# $1 – value name, format -n | --name
-# $2 – var name
-function read_opt {
+function read_opt() { ## read script arg following opt_name arg. last call arg – var_name to declare, previous – opt_name
   local var_name=${*: -1}
   local opt_name
   local argument
@@ -73,12 +72,7 @@ function read_opt {
   done
 }
 
-# Parse bash array form string arg: (-|--)<array_name> "<element 0><separator><element 1>"
-#
-# $1 – arg name, format -a | --array
-# $2 – var name
-# $3 – separator symbol (to use as IFS)
-function read_arr {
+function read_arr() { ## read script arg (the one following $1) as array named $2, using $3 as elements separator (default: ' ')
   local opt_name=$1
   local arr_name=$2
   local separator=$3
@@ -95,7 +89,7 @@ function read_arr {
   done
 }
 
-function str_to_arr {
+function str_to_arr() { ## split string $1 to array named $2, using $3 as elements as separator (default: ' ')
   local _ifs="${3:-' '}"
 
   if [ "$_ifs" = '\n' ]; then
@@ -117,15 +111,7 @@ function str_to_arr {
   fi
 }
 
-# Is -f | --flag has been passed in script call?
-#
-# Status code, no output.
-#
-# – Usage:
-# if read_flags -a --all; then
-#   log "FLAGGED!"
-# fi
-function read_flags {
+function read_flags() { ## returns error code if none of the given script args present
   local argument
   local name
   local short_flag
@@ -150,13 +136,7 @@ function read_flags {
   return 3
 }
 
-# Fail if any of the given args names is not defined as variable in script scope.
-#
-# Status code, no output.
-#
-# – Usage:
-# assert_defined LOGIN PASS
-function assert_defined {
+function assert_defined() { ## returns error code if any variable named as on of the call args is empty/undefined
   local has_missing=false
   local var_name
 
@@ -172,15 +152,7 @@ function assert_defined {
   fi
 }
 
-# Trusify check given variable value. (is value in [true, 1, YES, yes])?
-#
-# Status code, no output.
-#
-# – Usage:
-# if var_is_true DX_IS_CLOUD_INFRA; then
-#   log TRUE
-# fi
-function var_is_true {
+function var_is_true() { ## returns error code if the value of variable named $1 is not represent true ( true, 1, YES, yes, TRUE )
   local name=$1
 
   if value_in_list "${!name}" "" false; then
@@ -194,26 +166,10 @@ function var_is_true {
   return 3
 }
 
-# Trusify check given variable value. (is value in [true, 1, YES, yes])?
-#
-# Status code, no output.
-#
-# – Usage:
-# if value_in_list element el1 el2 el3; then
-#   log "element is in list!"
-# fi
-#
-# if value_in_list element "${arr[@]}"; then
-#   log "element is in array!"
-# fi
-function value_in_list {
+function value_in_list() { ## returns error code if $1 is not found in next call args
   local match=$1
   shift
   local e
   for e in "$@"; do [ "$match" = "$e" ] && return; done
   return 3
-}
-
-function func_defined {
-  declare -F "$1" > /dev/null
 }

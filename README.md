@@ -49,16 +49,13 @@ Samples:
 
 For fresh start in your repository run script:
 ```sh
-curl -fsSL "https://raw.githubusercontent.com/amidaleet/Xfile/4.0.0/Xfile_source/setup.sh" -o "setup.sh" # load setup script to local file
-chmod +x setup.sh # make script executable
-./setup.sh # load files with script
-rm -f setup.sh # remove setup script
+bash <<<$(curl -fsS "https://raw.githubusercontent.com/amidaleet/Xfile/main/Xfile_source/setup.sh")
 ```
 
 Or you can clone this **this** repository and call command from it's root dir.
 ```sh
 # Will create plain Xfile and copy impl files to provided directory
-./Xfile impl:xfile_init_copy --path "$HOME/Developer/my-app-repository"
+./Xfile xfile_init_copy "$HOME/Developer/my-app-repository"
 ```
 
 ### Interactive shell (alias and autocomplete)
@@ -184,10 +181,11 @@ Sample template with commentary:
 ```sh
 #!/usr/bin/env bash # 👀 Tells shell to which binary this file have to be send for interpretation
 
-set -eo pipefail # 👀 Recommended bash setting, can be customized
+set -eo pipefail # 👀 Recommended bash options, can be customized
+
 source "Xfile_source/impl.sh" # 👀 'Copies' implementation script to Xfile body
 
-export GIT_ROOT="$(realpath .)" # 👀 ENV and process values setting may be placed anywhere
+export GIT_ROOT="${GIT_ROOT:-"$(realpath .)"}" # 👀 ENV and process values setting may be placed anywhere
 
 # ---------- Block ---------- # 👀 Splits tasks in help
 
@@ -208,7 +206,7 @@ function any_task_you_want_to_add { ## 👀 One line note about task meaning
   # 👀 ^^^ helper functions from xlib
 }
 
-run_task "$@" # 👀 Starts input handling, calls specified task
+begin_xfile_task # 👀 Starts input handling, calls task specified in script args
 ```
 
 ### Task
@@ -280,13 +278,13 @@ And redefine your `Xfile` `help` function to get plugin tasks listed in `help` o
 It may be useful to allow place user defined extension file with ENV and tasks in your repo (added to `.gitignore`), like:
 
 ```sh
-if [ -f ./xprofile ]; then source ./xprofile; fi
+if [ -f usr/xprofile ]; then source usr/xprofile; fi
 
 function help { ## Print tasks description
   show_tasks_from "$0" "💪 Common Xfile tasks:"
-  log_blank_line
-  show_tasks_from xprofile "👤 Personal xprofile tasks:"
-  log_blank_line
+  log
+  show_tasks_from usr/xprofile "👤 Personal xprofile tasks:"
+  log
   usage
 }
 ```
@@ -432,7 +430,7 @@ function git:reset_retained_lfs_files {
 You can export values to executed processes and commands.
 
 ```sh
-export GIT_ROOT="$(realpath .)" # visible in sub-processes
+export GIT_ROOT="${GIT_ROOT:-"$(realpath .)"}" # visible in sub-processes
 SCRIPTS_FOLDER="tools/sh" # visible in the Xfile scope only
 
 function rubocop {
