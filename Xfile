@@ -7,11 +7,18 @@ fi
 
 set -eo pipefail
 
-export GIT_ROOT="${GIT_ROOT:-"$(realpath .)"}"
+export GIT_ROOT="${GIT_ROOT:-"${PWD:-"$(pwd)"}"}"
 export SCRIPTS_FOLDER="$GIT_ROOT/tools/sh"
 
 source "$GIT_ROOT/Xfile_source/impl.sh"
-source "$GIT_ROOT/Xfile_source/tests.sh"
+
+link_child_xfile "$GIT_ROOT/Xfile_source/tests/tests.sh"
+link_child_xfile "$SCRIPTS_FOLDER/git_x.sh"
+link_child_xfile "$SCRIPTS_FOLDER/ruby_x.sh"
+link_child_xfile "$SCRIPTS_FOLDER/brew_x.sh" brew:
+link_child_xfile "$SCRIPTS_FOLDER/Xcode_x.sh" xcode:
+link_child_xfile "$SCRIPTS_FOLDER/ios_runtime_x.sh" ios_runtime:
+link_child_xfile "$SCRIPTS_FOLDER/jenkins_x.sh" jenkins_
 
 if [ -f "$GIT_ROOT/usr/xprofile" ]; then source "$GIT_ROOT/usr/xprofile"; fi
 
@@ -31,7 +38,7 @@ GIT_HOOKS_DIR="$TOOLS_DIR/hooks"
 # ---------- Setup ----------
 
 function install_deps { ## Install required dependencies for development
-  task brew:install_ios_utils_from_brew
+  task brew:install_deps
   task install_python
   task install_ruby
   task gems_install
@@ -81,15 +88,6 @@ function install_git_hooks { ## Install helpful git hooks (branch name checker, 
 
 # ---------- brew (CLI bins) ----------
 
-function brew:repack_installed_deps { ## repack brew CLI utils to ./output/bin_repack_arch.zip
-  child_task "$SCRIPTS_FOLDER/brew_x.sh" repack_installed_deps
-}
-
-## --upgrade
-function brew:install_ios_utils_from_brew {
-  child_task "$SCRIPTS_FOLDER/brew_x.sh" install_deps
-}
-
 function brew:install_ios_utils_from_repack {
   brew:check_dx_utils_env
 
@@ -133,8 +131,7 @@ function brew:link_dylib_to_utils_dir {
       ;;
   esac
 
-  log_next "Will add symlinks to:"
-  log "$brew_dir"
+  log_next "Will add symlinks to:" "$brew_dir"
 
   cd "$brew_dir"
   sudo ln -s "$DX_SHELL_UTILS_DIR/opt" opt
@@ -142,33 +139,31 @@ function brew:link_dylib_to_utils_dir {
 }
 
 function brew:check_dx_utils_env {
-  log_info 'ENV is:'
-  log "📌 DX_SHELL_UTILS_DIR"
-  log "$DX_SHELL_UTILS_DIR"
-  log "📌 PATH"
-  log "$PATH"
+  log_info 'ENV is:' \
+    "📌 DX_SHELL_UTILS_DIR" \
+    "$DX_SHELL_UTILS_DIR" \
+    "📌 PATH" \
+    "$PATH"
 
   if [ -z "$DX_SHELL_UTILS_DIR" ]; then
     log_error "DX_SHELL_UTILS_DIR is missing in ENV"
-    log_info '.zprofile sample:'
-    log
     # shellcheck disable=SC2016
-    log \
+    log_info '.zprofile sample:' \
+      '' \
       'export DX_SHELL_UTILS_DIR="$HOME/Development/dx_utils"' \
-      'export PATH="$DX_SHELL_UTILS_DIR/bin:$PATH"'
-    log
+      'export PATH="$DX_SHELL_UTILS_DIR/bin:$PATH"' \
+      ''
     return 64
   fi
 
-  if [[ ! "$PATH" == *"$DX_SHELL_UTILS_DIR/bin:"* ]]; then
+  if [[ "$PATH" != *"$DX_SHELL_UTILS_DIR/bin:"* ]]; then
     log_error "DX_SHELL_UTILS_DIR is missing in PATH"
-    log_info '.zprofile sample:'
-    log
     # shellcheck disable=SC2016
-    log \
+    log_info '.zprofile sample:' \
+      '' \
       'export DX_SHELL_UTILS_DIR="$HOME/Development/dx_utils"' \
-      'export PATH="$DX_SHELL_UTILS_DIR/bin:$PATH"'
-    log
+      'export PATH="$DX_SHELL_UTILS_DIR/bin:$PATH"' \
+      ''
     return 64
   fi
 }
@@ -184,37 +179,22 @@ function xcode:patch_3rd_party_deps_for_arm64_simulator { ## Use arm64-to-sim to
 }
 
 function xcode:set_header { ## Set org Xcode header template in user directory
-  log_info "Set Sber Xcode header template in ~/Library/Developer/Xcode/UserData/"
+  log_info "Set Xcode header template in ~/Library/Developer/Xcode/UserData/"
   cp "$TOOLS_DIR/xcode/IDETemplateMacros.plist" "$HOME/Library/Developer/Xcode/UserData/"
 
   log "✅ Updated template at: ~/Library/Developer/Xcode/UserData/, file: IDETemplateMacros.plist"
 }
 
-# Idea source: https://blog.kulman.sk/faster-way-to-download-and-install-xcode/
-## --version --start_step --beta_number --apple-silicon --universal --apps_dir --cookie
-function xcode:install { ## Install Xcode of specified version
-  child_task "$SCRIPTS_FOLDER/Xcode_x.sh" xcode:install
-}
-
-## --version
-function xcode:install_ios_runtime {
-  child_task "$SCRIPTS_FOLDER/Xcode_x.sh" ios_runtime:install
-}
-
-function xcode:fix_ios_runtime_missing_when_installed { ## Fix "missing" iOS images, reinstalling runtime (bug with image unmount in /Library/Developer/CoreSimulator/Volumes)
-  child_task "$SCRIPTS_FOLDER/Xcode_x.sh" ios_runtime:fix_missing
-}
-
 function remove_ios_simulators { ## Remove all iOS simulators from Xcode
-  fastlane remove_ios_simulators
+  task fastlane remove_ios_simulators
 }
 
 function add_ios_simulator_for_tests { ## Add/Update targeted iOS simulator for tests in Workspace
-  fastlane add_ios_simulator_for_tests
+  task fastlane add_ios_simulator_for_tests
 }
 
 function print_swift_test_results_json_for_analytics_event { ## Find test case total, fails and skips in logs Xcode test scheme run logs (out: json)
-  ruby_run "$RUBY_SCRIPTS_DIR/grep_swift_test_results.rb" \
+  task ruby_run "$RUBY_SCRIPTS_DIR/grep_swift_test_results.rb" \
     p_"$OUTPUT_DIR/test_pretty_logs/swift_tools_tests/out.log" \
     f_"$OUTPUT_DIR/test_pretty_logs/unit_tests/out.log" \
     f_"$OUTPUT_DIR/test_pretty_logs/snapshot_tests/out.log" \
@@ -225,7 +205,7 @@ function print_swift_test_results_json_for_analytics_event { ## Find test case t
 }
 
 function print_swift_errors_for_mattermost { ## Find test case total, fails and skips in logs Xcode test scheme run logs (out: Mattermost markdown)
-  ruby_run "$RUBY_SCRIPTS_DIR/grep_swift_errors.rb" \
+  task ruby_run "$RUBY_SCRIPTS_DIR/grep_swift_errors.rb" \
     p_"$OUTPUT_DIR/test_pretty_logs/swift_tools_tests/err.log" \
     p_"$OUTPUT_DIR/test_pretty_logs/swift_tools_tests/out.log" \
     p_"$OUTPUT_DIR/test_pretty_logs/unit_tests/out.log" \
@@ -276,7 +256,7 @@ function format_swift { ## Format modified .swift files
 
 function format_ruby { ## Format .rb files
   log_info "🚧 Format ruby with rubocop"
-  ruby_bundle exec rubocop -a --format simple
+  task ruby_bundle exec rubocop -a --format simple
   log "✅ rubocop finished without offenses 🚧"
 }
 
@@ -303,632 +283,7 @@ function lint_swift { ## Lint modified .swift files
 }
 
 function lint_ruby { ## Lint all Ruby files
-  log_info "🚧 Lint ruby with rubocop"
-  ruby_bundle exec rubocop --lint
-}
-
-# ---------- Jenkins ----------
-
-## --name
-function jenkins_job_get_script { ## GET request, loads config.xml for Jenkins Job
-  read_opt --name job_name
-  assert_defined job_name jenkins_creds
-
-  log_info "Loading script for $job_name"
-
-  curl "$X_JENKINS_JOB_LIST_URL/${job_name}/config.xml" \
-    -u "$jenkins_creds" \
-    -o "$X_JENKINS_JOB_CONFIGS_DIR/${job_name}.xml" \
-    --show-error \
-    --fail
-
-  log_success "Loaded script for $job_name"
-}
-
-## --name
-function jenkins_job_post_script { ## POST request, updates config.xml for Jenkins Job
-  read_opt --name job_name
-  assert_defined job_name jenkins_creds
-
-  log_info "Updating script for $job_name"
-
-  # With application/xml type server returns code 500
-  curl "$X_JENKINS_JOB_LIST_URL/${job_name}/config.xml" \
-    -X POST \
-    -u "$jenkins_creds" \
-    -H "Content-Type: application/octet-stream" \
-    --data-binary "@$X_JENKINS_JOB_CONFIGS_DIR/$job_name.xml" \
-    --fail \
-    --show-error
-
-  log_success "Updated script for $job_name"
-}
-
-## --local --remote
-function jenkins_job_pull { ## Load Jenkins Job config, replace local repo script with loaded one
-  read_opt --local job_source_file_name
-  read_opt --remote job_remote_name
-  assert_defined job_source_file_name job_remote_name
-
-  log_info "Pulling script from server job $job_remote_name to $job_source_file_name.groovy"
-
-  task jenkins_job_get_script --name "$job_remote_name"
-  ruby_run "$RUBY_SCRIPTS_DIR/job_script_reader.rb" "$job_remote_name" \
-    > "$X_JENKINS_JOB_SCRIPTS_DIR/$job_source_file_name.groovy"
-
-  log_success "Put server code to $job_source_file_name.groovy"
-}
-
-## --local --remote
-function jenkins_job_push { ## Load Jenkins Job config, replace script with repo version, send back
-  read_opt --local job_source_file_name
-  read_opt --remote job_remote_name
-  assert_defined job_source_file_name job_remote_name
-
-  log_info "Pushing script from $job_source_file_name.groovy to server job $job_remote_name"
-
-  task jenkins_job_get_script --name "$job_remote_name"
-  ruby_run "$RUBY_SCRIPTS_DIR/job_script_writer.rb" "$job_source_file_name" "$job_remote_name"
-  task jenkins_job_post_script --name "$job_remote_name"
-
-  log_success "Put local code to server job $job_remote_name"
-}
-
-## --to_remote --to_local
-function jenkins_job_sync { ## Update Jobs code in repo <-> server
-  export X_JENKINS_JOB_SCRIPTS_DIR="devops/jobs"
-  export X_JENKINS_JOB_CONFIGS_DIR="output/xml_configs/devops"
-  export X_JENKINS_JOB_LIST_URL="https://sample.com/job/repo_folder/job"
-
-  if [ -z "$jenkins_creds" ]; then
-    log_error "Missing token"
-    log_warn "Export job admin token, see sample below"
-    log "export jenkins_creds='login:token'"
-    exit 3
-  fi
-
-  rm -rf "$X_JENKINS_JOB_CONFIGS_DIR"
-  mkdir -p "$X_JENKINS_JOB_CONFIGS_DIR"
-
-  if read_flags --to_remote; then
-    local cmd="jenkins_job_push"
-  elif read_flags --to_local; then
-    local cmd="jenkins_job_pull"
-  else
-    log_error "Missing required destination arg!"
-    exit 3
-  fi
-
-  task "$cmd" --local DebugJob --remote Debug_Job
-}
-
-# ---------- Utils ----------
-
-function install_chruby {
-  local DX_DIR_unexported=false
-  if [ -z "$DX_DIR" ]; then
-    DX_DIR_unexported=true
-    export DX_DIR="$HOME/Development/DX"
-  fi
-
-
-  mkdir -p "$DX_DIR/packs/Cellar/chruby"
-  rm -rf "$DX_DIR/packs/Cellar/chruby"
-  cp -rf "$GIT_ROOT/tools/sh/chruby" "$DX_DIR/packs/Cellar"
-
-  mkdir -p "$DX_DIR/packs/bin"
-  cd "$DX_DIR/packs/bin"
-  rm -f chruby-init chruby-exec
-  ln -s "../Cellar/chruby/chruby-init" chruby-init
-  ln -s "../Cellar/chruby/chruby-exec" chruby-exec
-
-  cd "$GIT_ROOT"
-
-  log_success "Installed chruby-init to $DX_DIR/packs/bin"
-  log
-  if [ "$DX_DIR_unexported" = true ]; then
-    log_warn "(Must have) To enable installed commands calls from Terminal" "Put to ~/.zprofile for ZSH (OR ~/.bash_profile for BASH):"
-    log "export DX_DIR=\"\$HOME/Development/DX\""
-    log "export PATH=\"\$DX_DIR/packs/bin:\$PATH\""
-    log
-  fi
-  log_info "(Recomended) To enable chruby in Terminal and pick ruby version" "Put to ~/.zprofile for ZSH (OR ~/.bash_profile for BASH):"
-  log "eval \"\$(chruby-init core)\"" "chruby $(get_ruby_repository_version)"
-  log
-  log_info "(Optionaly) To enable auto ruby switch in any dir" "Put next code to ~/.zshrc for ZSH (OR ~/.bashrc for BASH):"
-  log "eval \"\$(chruby-init auto)\""
-}
-
-function get_ruby_repository_version {
-  cat "$GIT_ROOT/.ruby-version"
-}
-
-chruby_activate_repository_version() { ## Fill ENV with current ruby version
-  if ! command -v chruby >/dev/null; then
-    log "No chruby command in script scope, will source chruby.sh from repo"
-    source "$TOOLS_DIR/sh/chruby/chruby.sh"
-  fi
-
-  local ruby_version="$(get_ruby_repository_version)"
-  log_info "Setting ruby $ruby_version"
-  chruby "$ruby_version"
-}
-
-function fastlane { ## run fastlane lane / action
-  ruby_bundle exec fastlane "$@"
-}
-
-function cocoapods { ## run pods cmd
-  ruby_bundle exec pod "$@"
-}
-
-function ruby_run { ## run ruby cmd in repository bundle context
-  ruby_bundle exec ruby "$@"
-}
-
-function ruby_bundle { ## run bundle cmd
-  chruby_activate_repository_version
-  bundle "$@"
-}
-
-function gems_install_bundle {
-  local BUNDLER_VERSION=$(grep -A 1 "BUNDLED WITH" "$GIT_ROOT/Gemfile.lock" | grep -oE "[0-9]+.[0-9]+.[0-9]+")
-
-  if gem list --installed bundler --version "$BUNDLER_VERSION" >/dev/null; then
-    log "Bundler $BUNDLER_VERSION is already installed"
-    return
-  fi
-
-  gem install bundler --version "$BUNDLER_VERSION" --config-file "$GIT_ROOT/.gemrc"
-}
-
-function gems_freeze { ## Forbid changes in Gemfile.lock
-  ruby_bundle config set --local frozen true
-}
-
-function gems_defrost { ## Allow changes in Gemfile.lock
-  ruby_bundle config set --local frozen false
-}
-
-function gems_update { ## Update gems and Gemfile.lock
-  ruby_bundle update
-}
-
-function gems_install { ## Setup locked gems from Gemfile.lock
-  ruby_bundle install
-}
-
-## --version --skip-existing
-function ruby_lang_installer {
-  local ruby_version short_ruby_version target_dir sources_dir
-
-  read_opt --version ruby_version
-  assert_defined ruby_version
-
-  short_ruby_version="${ruby_version%.*}"
-  target_dir="$HOME/.rubies/${ruby_version}"
-
-  log_info "Resolved versions:"
-  log "$ruby_version" "$short_ruby_version"
-
-  if read_flags --skip-existing; then
-    if [ -x "$target_dir/bin/ruby" ]; then
-      log_warn "Ruby seems to be already present at chruby folder:"
-      log "$target_dir"
-      log "Aborting..."
-      return
-    fi
-    if [ -x "$HOME/.rbenv/versions/$ruby_version/bin/ruby" ]; then
-      log_warn "Ruby seems to be already present at rbenv folder:"
-      log "$target_dir"
-      log "Aborting..."
-      return
-    fi
-  fi
-
-  mkdir -p "$OUTPUT_DIR"
-  cd "$OUTPUT_DIR"
-
-  sources_dir="ruby-${ruby_version}"
-  log_info "Loading ruby to: $OUTPUT_DIR/$sources_dir"
-  rm -rf "$sources_dir"
-  curl "https://cache.ruby-lang.org/pub/ruby/${short_ruby_version}/ruby-${ruby_version}.tar.xz" | tar -x
-
-  log_info "Resolving lib dirs..."
-  local gmp_path libyaml_path openssl_path readline_path zlib_path
-
-  if command -v brew >/dev/null; then
-    log "Using lib dirs from brew:"
-    gmp_path="$(brew --prefix gmp)"
-    libyaml_path="$(brew --prefix libyaml)"
-    openssl_path="$(brew --prefix openssl)"
-    readline_path="$(brew --prefix readline)"
-    zlib_path="$(brew --prefix zlib)"
-  elif [ -d "$DX_SHELL_UTILS_DIR" ]; then
-    log "Using lib dirs from dx_utils: $DX_SHELL_UTILS_DIR"
-    gmp_path="$DX_SHELL_UTILS_DIR/opt/gmp"
-    libyaml_path="$DX_SHELL_UTILS_DIR/opt/libyaml"
-    openssl_path="$DX_SHELL_UTILS_DIR/opt/openssl"
-    readline_path="$DX_SHELL_UTILS_DIR/opt/readline"
-    zlib_path="$DX_SHELL_UTILS_DIR/opt/zlib"
-  fi
-  log "Resolved lib dirs:" "$gmp_path" "$libyaml_path" "$openssl_path" "$readline_path" "$zlib_path"
-
-  log_info "Compiling ruby..."
-  # script source: https://github.com/postmodern/chruby/wiki/Ruby
-  cd "$sources_dir"
-  ./configure \
-    --prefix="$target_dir" \
-    --with-gmp-dir="$gmp_path" \
-    --with-libyaml-dir="$libyaml_path" \
-    --with-openssl-dir="$openssl_path" \
-    --with-readline-dir="$readline_path" \
-    --with-zlib-dir="$zlib_path"
-  make
-  make install
-}
-
-# ---------- Git ----------
-
-function commit {
-  git commit "$@"
-}
-
-function amend { ## git commit --amend
-  git commit --amend "$@"
-}
-
-function rebase { ## rebase on passed remote branch
-  local BRANCH=${1-main}
-
-  git fetch origin "$BRANCH"
-  git rebase -i "origin/$BRANCH"
-}
-
-function push { ## git push
-  git push "$@"
-}
-
-## main release/ --force
-function ff { ## fast-forward reset branch
-  local BRANCH=${1-main}
-
-  if [[ -n $(git status --porcelain) ]]; then
-    if read_flags --force -f; then
-      log "Force flag used, will reset all changes"
-    else
-      log_warn "Uncommitted changes, use --force flag to reset them"
-      git status --porcelain
-      return
-    fi
-  fi
-
-  git fetch origin "$BRANCH"
-  git checkout "$BRANCH"
-  git reset --hard "origin/$BRANCH"
-}
-
-function feature {
-  git checkout -b "feature/$1"
-}
-
-## --version
-function release { ## Make and push release branch
-  read_opt -v --version version
-  assert_defined version
-
-  local tag_name="release/$version"
-
-  git tag "$tag_name"
-  git push origin "$tag_name"
-}
-
-function git:ensure_clean { ## Error if git changes found
-  fastlane run ensure_git_status_clean \
-    show_diff:true
-}
-
-function git:number_of_commits { ## Prints number of commits in current branch
-  swift "$SWIFT_SCRIPTS_DIR/GetNumberOfCommits.swift"
-}
-
-## --staged --commited --all
-function git:move_forgotten_files_to_lfs { ## Move files to LFS if needed (convert large files to LFS pointers)
-  local files
-  local regex=".*\.((?i)png|jpeg|jpg|pdf|webp|psd|7z|br|gz|tar(?-i))$"
-
-  log_info "Force filter files by LFS"
-
-  if read_flags --staged -s; then
-    log_info "Filter staged files"
-    files="$(git diff --diff-filter=d --name-only --cached | grep -E $regex || true)"
-  elif read_flags --commited -c; then
-    log_info "Filter files in last commit"
-    files="$(git log --diff-filter=d --first-parent --name-only --oneline -n 1 | tail -n +2 | grep -E $regex || true)"
-  elif read_flags --all -a; then
-    log_info "Filter all files"
-    files=.
-  else
-    log_warn "Option flags unspecified, add some:"
-    log "$(task_args git:move_forgotten_files_to_lfs)"
-    return 3
-  fi
-
-  if [ -z "$files" ]; then
-    log_success "LFS filter run is not needed"
-    return
-  fi
-
-  log_info "Files to filter:"
-  log "$files"
-
-  echo "$files" | tr \\n \\0 | xargs -0 git add --renormalize -v
-
-  log_success "LFS filter applied to selected files"
-}
-
-## --lose-unstaged-changes
-function git:reset_retained_lfs_files { ## Fix LSF error: Encountered X file(s) that should have been pointers, but weren't:
-  if ! read_flags --lose-unstaged-changes; then
-    log_warn "
-    This call will remove all unstaged files!
-
-    1) Use git add to save necessary changes
-    2) Call again with --lose-unstaged-changes arg to confirm unstaged diff loss
-    "
-    return
-  fi
-
-  local attributes_backup="$(cat .gitattributes)"
-
-  echo -n "" >.gitattributes
-
-  local files="$(git diff --name-only | grep -v '.gitattributes' || true)"
-  log "$files"
-
-  echo "$files" | tr \\n \\0 | xargs -0 git checkout HEAD --
-  echo "$attributes_backup" >.gitattributes
-
-  log_success "Pointer-less LFS files must disappear"
-}
-
-
-## --staged --commited
-function git:assert_no_snapshot_fail_artifacts { ## Assert no new | diff .png files (returns error code otherwise)
-  local files
-  local regex="(.*@[0-9]{1}x_(diff|new).png$)|(.*(diff|new)@[0-9]{1}x.png$)"
-
-  log_info "Checking for Snapshot diff/new .png files in stage"
-
-  if read_flags --staged -s; then
-    log_info "Filter staged files"
-    files="$(git diff --diff-filter=d --name-only --cached | grep -E $regex || true)"
-  elif read_flags --commited -c; then
-    log_info "Filter files in last commit"
-    files="$(git log --diff-filter=d --first-parent --name-only --oneline -n 1 | tail -n +2 | grep -E $regex || true)"
-  else
-    log_warn "Option flags unspecified, add some:"
-    log "$(task_args git:assert_no_snapshot_fail_artifacts)"
-    return 3
-  fi
-
-  if [ -z "$files" ]; then
-    log_success "No snapshot diff/new files"
-    return
-  else
-    log_error "Found unallowed failed snapshot artifacts, please unstage or delete them!"
-    log "$files"
-    return 3
-  fi
-}
-
-## --fetch
-function git:delete_merged_features { ## Delete branches without upstream in origin (PR must be merged)
-  if read_flags --fetch; then
-    log_info 'Fetching branches, pruning ones that been removed from remote'
-    git fetch origin --prune
-  fi
-
-  local merged_features
-  local str
-  local count
-
-  str="$(\
-    git for-each-ref --format '%(refname) %(upstream:track)' refs/heads \
-    | grep feature/ \
-    | awk '$2 == "[gone]" {sub("refs/heads/", "", $1); print $1}' \
-    )"
-
-  str_to_arr "$str" merged_features '\n'
-
-  count="${#merged_features[@]}"
-
-  if [ "$count" -eq 0 ]; then
-    log_success 'Merged features not found'
-    return
-  fi
-
-  log_info 'Found merged features:'
-  log "${merged_features[@]}"
-
-  git branch -D "${merged_features[@]}"
-
-  log_success "Removed $count branches"
-}
-
-## --fetch
-function git:clean_remote { ## Remove too old and merged branches from origin
-  if read_flags --fetch -f; then
-    log_info "💿 Fetching remote with --prune ..."
-    git fetch --prune
-  fi
-
-  local branchArr=()
-  for branch in $(git branch -r --merged main | grep -v main | grep -v release/ | grep -v cloud/ | sed 's/origin\///'); do
-    branchArr+=("$branch")
-  done
-
-  if [[ ! "${#branchArr[@]}" -eq 0 ]]; then
-    log_info "🗑️  Removing merged branches:"
-    for branch in "${branchArr[@]}"; do
-      log "$branch"
-    done
-    git push origin -d "${branchArr[@]}"
-  fi
-
-  unset branchArr
-
-  for branch in $(git branch -r | grep -v main | grep -v release/ | grep -v cloud/); do
-    if (($(git log -1 --since='2 month ago' -s "$branch" | wc -l) == 0)); then
-      branch=$(echo "$branch" | sed 's/origin\///')
-      branchArr+=("$branch")
-    fi
-  done
-
-  if [[ ! "${#branchArr[@]}" -eq 0 ]]; then
-    log_info "🗑️  Removing too old branches:"
-    for branch in "${branchArr[@]}"; do
-      log "$branch"
-    done
-    git push origin -d "${branchArr[@]}"
-  fi
-
-  log_success "Branches clean up finished!"
-}
-
-## --fetch --remote --local --wildcard
-function git:delete_branches { ## Remove branches by wildcard
-  read_opt -w --wildcard WILDCARD
-  assert_defined WILDCARD
-
-  if read_flags --fetch -f; then
-    log_info "💿 Fetching remote with --prune ..."
-    git fetch --prune
-  fi
-
-  local branchArr=()
-
-  for branch in $(git branch --all --list "$WILDCARD" | sed 's/  origin\///'); do
-    branchArr+=("$branch")
-  done
-
-  if [[ ! "${#branchArr[@]}" -eq 0 ]]; then
-    log_info "🗑️  Found next branches:"
-    for branch in ${branchArr[@]}; do
-      log "$branch"
-    done
-  else
-    log_warn "Found no branches to delete!"
-  fi
-
-  if read_flags --remote -r; then
-    log_info "🗑️  Removing remote branches"
-    git push origin -d "${branchArr[@]}"
-  fi
-
-  if read_flags --local -l; then
-    log_info "🗑️  Removing local branches"
-    git branch -d "${branchArr[@]}"
-  fi
-
-  log_success "Branches deletion finished!"
-}
-
-## --fetch --remote --local --wildcard
-function git:delete_tags { ## Remove tags by wildcard
-  read_opt -w --wildcard WILDCARD
-  assert_defined WILDCARD
-
-  if read_flags --fetch -f; then
-    log_info "💿 Fetching remote with --tags ..."
-    git fetch --tags --prune
-  fi
-
-  local tagsArr=()
-
-  for tag in $(git tag -l "$WILDCARD"); do
-    tagsArr+=("$tag")
-  done
-
-  if [[ ! "${#tagsArr[@]}" -eq 0 ]]; then
-    log_info "🗑️  Found next tags:"
-    for tag in ${tagsArr[@]}; do
-      log "$tag"
-    done
-  else
-    log_warn "Found no tags to delete!"
-  fi
-
-  if read_flags --remote -r; then
-    log_info "🗑️  Removing remote tags"
-    local refsArr=()
-    for tag in ${tagsArr[@]}; do
-      refsArr+=("refs/tags/$tag")
-    done
-    git push -d origin "${refsArr[@]}"
-  fi
-
-  if read_flags --local -l; then
-    log_info "🗑️  Removing local tags"
-    git tag -d "${tagsArr[@]}"
-  fi
-}
-
-# ---------- Git Sync ----------
-
-## --branches --from --to
-function sync_branches { ## Sync listed branches between 2 remotes
-  read_opt -b --branches BRANCHES
-  read_opt --from FROM_REMOTE
-  read_opt --to TO_REMOTE
-  assert_defined BRANCHES FROM_REMOTE TO_REMOTE
-
-  task sync_branches_fetch -b "$BRANCHES" --from "$FROM_REMOTE"
-  task sync_branches_push -b "$BRANCHES" --to "$TO_REMOTE"
-
-  log_success "Synchronized '$BRANCHES'!"
-}
-
-## --from --branches
-function sync_branches_fetch { ## fetch (+ LFS --all) listed branches from remote
-  read_opt -b --branches BRANCHES
-  read_opt --from FROM_REMOTE
-  assert_defined BRANCHES FROM_REMOTE
-
-  log_info "Will fetch '$BRANCHES' from '$FROM_REMOTE'"
-
-  log "Switching from your branch to unlock it's fetching..."
-  git switch --detach
-
-  local fetchRefs=''
-  for BRANCH in ${BRANCHES[@]}; do
-    fetchRefs+=" $BRANCH:$BRANCH"
-  done
-
-  log "Fetching refs..."
-  git fetch $FROM_REMOTE $fetchRefs
-
-  log "Fetching LFS files..."
-  git-lfs fetch --all $FROM_REMOTE $BRANCHES
-
-  log "Switching back to your branch..."
-  git switch -
-
-  log_success "Fetched '$BRANCHES' from '$FROM_REMOTE'!"
-}
-
-## --to --branches
-function sync_branches_push { ## push listed branches to remote
-  read_opt -b --branches BRANCHES
-  read_opt --to TO_REMOTE
-  assert_defined BRANCHES TO_REMOTE
-
-  log_info "Will push '$BRANCHES' to '$TO_REMOTE'"
-
-  log "Pushing refs..."
-  git push $TO_REMOTE $BRANCHES
-
-  log_success "Pushed '$BRANCHES' to '$TO_REMOTE'!"
+  task ruby_bundle exec rubocop --lint
 }
 
 # ---------- Agent information ----------
@@ -945,39 +300,82 @@ function bash_version { ## log bash version (which runs Xfile)
   puts "$BASH_VERSION"
 }
 
-# ---------- Xfile ----------
+# ---------- Xfile development ----------
 
-function help {
-  show_tasks_from "$0" "💪 Xfile tasks:"
-  log
-  show_tasks_from Xfile_source/impl.sh "⚙️ impl functions:"
-  log
-  show_tasks_from Xfile_source/tests.sh "🧪 tests functions:"
-  log
-  show_tasks_from Xfile_source/xlib.sh "📚 xlib functions:"
-  log
-  if [ -f usr/xprofile ]; then
-    show_tasks_from usr/xprofile "👤 Personal xprofile tasks:"
-    log
+function release_deploy {
+  assert_semver "$1"
+
+  task release_bump_ref_in_setup "$1"
+  task release_zip_source_dir
+  task release_push_branch "$1"
+  task release_push_tag "$1"
+
+  log_success "Pushed release $1"
+  log_info "Should publish Github 'Release' manually"
+}
+
+function release_push_branch {
+  assert_semver "$1"
+
+  log_next "Will make and push release/$1 branch"
+  git checkout -b "release/$1"
+  git add .
+  git commit
+  git push
+}
+
+function release_push_tag {
+  log_next "Will make and push $1 tag"
+  git tag "$1"
+  git push origin "$1"
+}
+
+function release_bump_ref_in_setup {
+  assert_semver "$1"
+
+  log_next "Will change version in:" Xfile_source/setup.sh README.md
+
+  sed -i '' "s/{XFILE_REF:-.*}/{XFILE_REF:-$1}/1" ./Xfile_source/setup.sh
+  sed -i '' "s/XFILE_REF='.*'/XFILE_REF='$1'/1" ./README.md
+}
+
+function release_zip_source_dir {
+  log_next "Will zip ./Xfile_source to $OUTPUT_DIR/Xfile_source.zip"
+
+  zip -r "$OUTPUT_DIR/Xfile_source.zip" ./Xfile_source
+}
+
+function assert_semver {
+  if [[ ! "$1" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+    log_error "Bad semver: $1"
+    return 9
   fi
-  usage
+}
+
+# ---------- Xfile override ----------
+
+show_tasks() {
+  show_tasks_from "$0"
+  show_tasks_from_linked_children
+  show_tasks_from Xfile_source/impl.sh "⚙️ impl functions:"
+  show_tasks_from Xfile_source/xlib.sh "📚 xlib functions:"
+  if [ -f usr/xprofile ]; then show_tasks_from usr/xprofile "👤 Personal xprofile tasks:"; fi
 }
 
 task_names() {
   show_task_names_from Xfile
+  show_task_names_from_linked_children
   show_task_names_from Xfile_source/impl.sh
-  show_task_names_from Xfile_source/tests.sh
   show_task_names_from Xfile_source/xlib.sh
   if [ -f usr/xprofile ]; then show_task_names_from usr/xprofile; fi
 }
 
 task_args() {
   impl:task_args "$1" Xfile \
+    || impl:task_args_in_linked_children "$1" \
     || impl:task_args "$1" Xfile_source/impl.sh \
-    || impl:task_args "$1" Xfile_source/tests.sh \
     || impl:task_args "$1" Xfile_source/xlib.sh \
-    || impl:task_args "$1" usr/xprofile \
-    || true
+    || impl:task_args "$1" usr/xprofile
 }
 
 begin_xfile_task

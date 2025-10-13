@@ -32,16 +32,17 @@ Aimed to replace widespread `Makefile` misuse as a repo commands launcher.
 
 ## Repo content
 
-Xfile implementation in `Xfile_source`:
-  - impl.sh – common core tasks
-  - xlib.sh – helpers for args handling
-  - tests.sh – tasks for impl/xlib testing
-  - completion.sh – alias and autocomplete for interactive shell
+Xfile implementation in `./Xfile_source` folder:
+  - impl.sh – core functions
+  - xlib.sh – helpers
+  - completion.sh – alias and autocomplete for interactive shell setup
+  - template.sh – sample Xfile with minimum code
+  - tests/tests.sh – tasks for impl/xlib testing
 
 Samples:
-  - Xfile (git and iOS development tasks)
-  - git hooks
-  - scripts: bash, ruby, fastlane, swift code
+  - Xfile – task examples
+  - git hooks –
+  - scripts – some bash, ruby, fastlane, swift code
 
 ## Install Xfile
 
@@ -49,13 +50,14 @@ Samples:
 
 For fresh start in your repository run script:
 ```sh
-bash <<<$(curl -fsS "https://raw.githubusercontent.com/amidaleet/Xfile/main/Xfile_source/setup.sh")
+(export XFILE_REF='main'; bash <<<$(curl -fsS "https://raw.githubusercontent.com/amidaleet/Xfile/$XFILE_REF/Xfile_source/setup.sh"))
 ```
 
 Or you can clone this **this** repository and call command from it's root dir.
 ```sh
-# Will create plain Xfile and copy impl files to provided directory
-./Xfile xfile_init_copy "$HOME/Developer/my-app-repository"
+git clone git@github.com:amidaleet/Xfile.git ./Xfile # clone repo
+cd Xfile # move to this repo root
+./Xfile xfile_init_copy "$HOME/Developer/my-repository" # create plain Xfile and copy impl files to provided directory
 ```
 
 ### Interactive shell (alias and autocomplete)
@@ -185,7 +187,7 @@ set -eo pipefail # 👀 Recommended bash options, can be customized
 
 source "Xfile_source/impl.sh" # 👀 'Copies' implementation script to Xfile body
 
-export GIT_ROOT="${GIT_ROOT:-"$(realpath .)"}" # 👀 ENV and process values setting may be placed anywhere
+export GIT_ROOT="${GIT_ROOT:-"${PWD:-"$(pwd)"}"}" # 👀 ENV and process values setting may be placed anywhere
 
 # ---------- Block ---------- # 👀 Splits tasks in help
 
@@ -319,14 +321,33 @@ Instead of sourcing all the Xfiles as plugins in your main Xfile, it may be conv
 - Thats prevents scope pollution and sourcing overhead.
 - Also task names collision is not a problem with this method.
 
+Children Xfiles can be "linked", meaning their tasks will be visible in help and can be called with this Xfile.
+
+```sh
+# Link in ./Xfile:
+link_child_xfile "$GIT_ROOT/Xfile_source/tests.sh"
+```
+
+With link tasks from children can be invoked from Terminal.
+
+```sh
+./Xfile test_xfile # task from "$GIT_ROOT/Xfile_source/tests.sh" file
+```
+
+Or in a Xfile task's code.
+
+```sh
+function my_task() {
+  task test_xfile
+}
+```
+
+Another option is to declare wrapper tasks and call child directly.
+
 ```sh
 ## --upgrade
 function brew:install_ios_utils_from_brew { ## Install repo deps with brew. Sample: x brew:install_ios_utils_from_brew --upgrade
   child_task "$SCRIPTS_FOLDER/brew_x.sh" install_deps ## Will put original task args to call (after the given brew task name)
-}
-
-function brew_task { ## Forward any task to brew_x Xfile. Sample: x brew_task install_deps --upgrade
-  child_task "$SCRIPTS_FOLDER/brew_x.sh" ## Will put original task args to call
 }
 ```
 
@@ -430,7 +451,7 @@ function git:reset_retained_lfs_files {
 You can export values to executed processes and commands.
 
 ```sh
-export GIT_ROOT="${GIT_ROOT:-"$(realpath .)"}" # visible in sub-processes
+export GIT_ROOT="${GIT_ROOT:-"${PWD:-"$(pwd)"}"}" # visible in sub-processes
 SCRIPTS_FOLDER="tools/sh" # visible in the Xfile scope only
 
 function rubocop {

@@ -24,32 +24,32 @@ top_level_deps=(
 
 # ---------- Brew setup ----------
 
-function install_brew_native {
+function install_brew_arm() {
   /bin/bash -c "$(curl -fsS https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 }
 
-function install_brew_x86_64 {
+function install_brew_x86_64() {
   arch -x86_64 /bin/bash -c "$(curl -fsS https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 }
 
 # ---------- Deps ----------
 
 ## --upgrade
-function install_deps {
+function install_deps { ## install repository deps from homebrew (CLI tools and dylibs)
   if ! read_flags --upgrade; then
     export HOMEBREW_NO_INSTALL_UPGRADE=true
     export HOMEBREW_NO_AUTO_UPDATE=true
   fi
 
-  log_info "Install Homebrew dependencies:"
-  log "${top_level_deps[@]}"
+  log_info "Install Homebrew dependencies:" \
+    "${top_level_deps[@]}"
   log_info 'Error: & Warning: in log are expected for already installed deps'
 
   brew install "${top_level_deps[@]}"
   log_success "brew install complete!"
 }
 
-function repack_installed_deps {
+function repack_installed_deps { ## pack installed repository brew deps to .zip
   local brew_bins_dir
   local required_deps_str
   local repo_deps=()
@@ -73,8 +73,8 @@ function repack_installed_deps {
 
   eval 'repo_deps=('$(printf "%q\n" "${repo_deps[@]}" | sort -u)')'
 
-  log_info "Resolved all required deps list:"
-  log "${repo_deps[@]}"
+  log_info "Resolved all required deps list:" \
+    "${repo_deps[@]}"
 
   log_next "Asking brew for deps path..."
 
@@ -83,18 +83,18 @@ function repack_installed_deps {
     deps_cellar_dirs+=("$dep_cellar_dir")
   done < <(brew info "${repo_deps[@]}" | grep '/Cellar/')
 
-  log_info "Resolved deps dirs for packing:"
-  log "${deps_cellar_dirs[@]}"
+  log_info "Resolved deps dirs for packing:" \
+    "${deps_cellar_dirs[@]}"
 
-  log_info "Deps and dirs count:"
-  log "Total deps: ${#repo_deps[@]} | Total dirs: ${#deps_cellar_dirs[@]}"
-  log '- Note: deps may share dir sometimes!'
+  log_info "Deps and dirs count:" \
+    "Total deps: ${#repo_deps[@]} | Total dirs: ${#deps_cellar_dirs[@]}" \
+    '- Note: deps may share dir sometimes!'
 
   brew_bins_dir="$(which brew)"
   brew_bins_dir="${brew_bins_dir%/*}"
   brew_root="${brew_bins_dir%/*}"
-  log_info 'Resolved brew bins dir:'
-  log "$brew_bins_dir"
+  log_info 'Resolved brew bins dir:' \
+    "$brew_bins_dir"
 
   log_next "Resolving needed bin dir symlinks list..."
   for symlink in "$brew_bins_dir"/*; do
@@ -107,8 +107,8 @@ function repack_installed_deps {
       fi
     done
   done
-  log_info 'Resolved bin dir symlinks for packing:'
-  log "${deps_symlinks[@]}"
+  log_info 'Resolved bin dir symlinks for packing:' \
+    "${deps_symlinks[@]}"
 
   log_next "Resolving needed opt dir symlinks list..."
   for symlink in "$brew_root/opt"/*; do
@@ -121,8 +121,8 @@ function repack_installed_deps {
       fi
     done
   done
-  log_info 'Resolved opt dir symlinks for packing:'
-  log "${deps_opt_symlinks[@]}"
+  log_info 'Resolved opt dir symlinks for packing:' \
+    "${deps_opt_symlinks[@]}"
 
   log_next "Resolving needed lib dir symlinks list..."
   for symlink in "$brew_root/lib"/*; do
@@ -156,8 +156,8 @@ function repack_installed_deps {
     path_to_pack+=("$(grealpath -s --relative-to="$brew_root" "$dir")")
   done
 
-  log_next 'Resolved final path list for zip:'
-  log "${path_to_pack[@]}"
+  log_next 'Resolved final path list for zip:' \
+    "${path_to_pack[@]}"
 
   log_next 'Zipping deps to repack...'
 
@@ -182,8 +182,8 @@ function repack_installed_deps {
   zip -qyr "$zip_path" "${path_to_pack[@]}"
   cd -
 
-  log_success '✅ Repack archive is ready!'
-  log "$zip_path"
+  log_success '✅ Repack archive is ready!' \
+    "$zip_path"
 }
 
 begin_xfile_task
