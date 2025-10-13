@@ -53,12 +53,6 @@ if [ "$NAME" != "(no branch)" ]; then
   commit_msg="$(cat "${COMMIT_MSG_FILE}")"
   cat <<'TEXT' > "${COMMIT_MSG_FILE}"
 Task
-
-**Context**:
-
-
-**Changes**:
-- 1
 TEXT
   echo -e "$commit_msg" >> "${COMMIT_MSG_FILE}"
 fi

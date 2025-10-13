@@ -18,16 +18,16 @@ main() {
   done
 
   if [ ${#fixed_dynamic_deps[@]} -gt 0 ]; then
-    log_success "Fixed ${#fixed_dynamic_deps[@]} dynamic Rosetta deps:"
-    log "${fixed_dynamic_deps[@]}"
+    log_success "Fixed ${#fixed_dynamic_deps[@]} dynamic Rosetta deps:" \
+      "${fixed_dynamic_deps[@]}"
   fi
   if [ ${#fixed_static_deps[@]} -gt 0 ]; then
-    log_success "Fixed ${#fixed_static_deps[@]} static Rosetta deps:"
-    log "${fixed_static_deps[@]}"
+    log_success "Fixed ${#fixed_static_deps[@]} static Rosetta deps:" \
+      "${fixed_static_deps[@]}"
   fi
   if [ ${#unfixable_deps[@]} -gt 0 ]; then
-    log_error "Unable to fix ${#unfixable_deps[@]} deps!"
-    log "${unfixable_deps[@]}"
+    log_error "Unable to fix ${#unfixable_deps[@]} deps!" \
+      "${unfixable_deps[@]}"
     return 27
   fi
 }

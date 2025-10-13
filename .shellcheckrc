@@ -7,6 +7,7 @@ disable=SC2312
 disable=SC2068
 disable=SC2250
 disable=SC2155
+disable=SC2120
 
 # If you're having issues with shellcheck following source, disable the errors via:
 # disable=SC1090
