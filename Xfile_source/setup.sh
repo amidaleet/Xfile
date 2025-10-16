@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -eo pipefail
 
-XFILE_REF=${XFILE_REF:-main}
+XFILE_REF=${XFILE_REF:-6.0.0}
 
 load_scripts() {
   local s file
