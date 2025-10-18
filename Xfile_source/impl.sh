@@ -120,6 +120,7 @@ function begin_xfile_task { ## execute task $1 as shell command passing followin
   fi
 
   if task_declared "$task_name"; then
+    push_task_stack "$task_name"
     "${_SCRIPT_ARGS_ARR[@]}"
   elif child_idx=$(try_find_child_with_task "$task_name"); then
     try_run_task_in_child "$child_idx" "$task_name"
@@ -328,5 +329,3 @@ function xfile_init_copy() { ## copy sources and Xfile sample to $1 dir
     cp "$GIT_ROOT/Xfile_source/template.sh" "$1/Xfile"
   fi
 }
-
-push_task_stack "$1"
