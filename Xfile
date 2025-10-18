@@ -307,27 +307,39 @@ function release_deploy {
 
   task release_bump_ref_in_setup "$1"
   task release_zip_source_dir
-  task release_push_branch "$1"
-  task release_push_tag "$1"
+
+  log_next "Will commit to and push release branch"
+  task release_make_branch_if_major "$1"
+  git add .
+  git commit
+  git push
+
+  log_next "Will make and push $1 tag"
+  git tag "$1"
+  git push origin "$1"
 
   log_success "Pushed release $1"
   log_info "Should publish Github 'Release' manually"
 }
 
-function release_push_branch {
+function release_make_branch_if_major {
   assert_semver "$1"
+  local current_branch release_branch_name
+  current_branch=$(git branch --show-current)
+  release_branch_name="release/${1%%.*}"
 
-  log_next "Will make and push release/$1 branch"
-  git checkout -b "release/$1"
-  git add .
-  git commit
-  git push
-}
+  if [ "${1#*.}" != '0.0' ]; then
+    log_note "$1 is not a major release"
+    if [ "$current_branch" != "$release_branch_name" ]; then
+      log_error "Expected to be on existing $release_branch_name, but got:" "$current_branch"
+      return 9
+    fi
+    log_next "Won't create new branch, will update current:" "$release_branch_name"
+    return
+  fi
 
-function release_push_tag {
-  log_next "Will make and push $1 tag"
-  git tag "$1"
-  git push origin "$1"
+  log_next "Will create and checkout $release_branch_name branch"
+  git checkout -b "$release_branch_name"
 }
 
 function release_bump_ref_in_setup {
