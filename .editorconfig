@@ -46,7 +46,7 @@ indent_size = 2
 [*.css]
 indent_size = 2
 
-[*.sh]
+[{*.sh,Xfile}]
 indent_style = space
 indent_size = 2
 
