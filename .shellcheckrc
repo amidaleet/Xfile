@@ -8,6 +8,7 @@ disable=SC2068
 disable=SC2250
 disable=SC2155
 disable=SC2120
+disable=SC2164 # 'set -e' covers that
 
 # If you're having issues with shellcheck following source, disable the errors via:
 # disable=SC1090

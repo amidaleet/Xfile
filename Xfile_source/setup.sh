@@ -11,10 +11,12 @@ load_scripts() {
     echo "Loading $file" 1>&2
 
     curl \
-      -fsS "https://raw.githubusercontent.com/amidaleet/Xfile/$XFILE_REF/$file" \
-      -o "$file"
-    chmod +x "$file"
+      -fsSL "https://raw.githubusercontent.com/amidaleet/Xfile/$XFILE_REF/$file" \
+      -o "$file" \
+    && chmod +x "$file" \
+    &
   done
+  wait
 }
 
 init_xfile_from_repo() {
