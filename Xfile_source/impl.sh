@@ -306,11 +306,34 @@ function xfile_init_load() { ## load sources and Xfile sample to $1 dir from $2 
   cd "$1"
   export XFILE_REF=${2:-main}
 
-  curl -fsS "https://raw.githubusercontent.com/amidaleet/Xfile/$XFILE_REF/Xfile_source/setup.sh" -o setup.sh
+  task try_load_xfile_from_release_archive || task try_load_xfile_from_ref || {
+    log_error "Failed to install Xfile $XFILE_REF to:" "$1"
+    return 9
+  }
 
-  log_info "Will execute next script:" '```sh'
+  log_success "Installed Xfile $XFILE_REF to:" "$1"
+}
+
+try_load_xfile_from_release_archive() {
+  log_next "Will try to load and unpack Xfile_source.zip from Release $XFILE_REF"
+
+  curl -fsSL "https://github.com/amidaleet/Xfile/releases/download/$XFILE_REF/Xfile_source.zip" -o Xfile_source.zip
+  rm -rf ./Xfile_source
+  unzip ./Xfile_source.zip
+  if [ ! -x ./Xfile ]; then
+    cp -f ./Xfile_source/template.sh ./Xfile
+  fi
+  rm -f ./Xfile_source.zip
+}
+
+try_load_xfile_from_ref() {
+  log_next "Will try load and use ./Xfile_source/setup.sh from git ref $XFILE_REF"
+
+  curl -fsSL "https://raw.githubusercontent.com/amidaleet/Xfile/$XFILE_REF/Xfile_source/setup.sh" -o setup.sh
+  log_next "Will execute next script:" '```sh'
   cat setup.sh
   log '```'
+
   chmod +x setup.sh
   ./setup.sh
   rm -f setup.sh

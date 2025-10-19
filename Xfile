@@ -345,9 +345,10 @@ function release_make_branch_if_major {
 function release_bump_ref_in_setup {
   assert_semver "$1"
 
-  log_next "Will change version in:" Xfile_source/setup.sh README.md
+  log_next "Will change version in:" Xfile_source/setup.sh Xfile_source/impl.sh README.md
 
   sed -i '' "s/{XFILE_REF:-.*}/{XFILE_REF:-$1}/1" ./Xfile_source/setup.sh
+  sed -i '' "s#XFILE_REF=\${2:-.*}#XFILE_REF=\${2:-$1}#1" ./Xfile_source/impl.sh
   sed -i '' "s/XFILE_REF='.*'/XFILE_REF='$1'/1" ./README.md
 }
 
