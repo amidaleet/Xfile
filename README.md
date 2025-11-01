@@ -32,17 +32,19 @@ Aimed to replace widespread `Makefile` misuse as a repo commands launcher.
 
 ## Repo content
 
-Xfile implementation in `./Xfile_source` folder:
+Whole Xfile implementation in a single `./Xfile_source` folder:
   - impl.sh – core functions
   - xlib.sh – helpers
   - completion.sh – alias and autocomplete for interactive shell setup
   - template.sh – sample Xfile with minimum code
   - tests/tests.sh – tasks for impl/xlib testing
 
-Samples:
-  - Xfile – task examples
-  - git hooks –
-  - scripts – some bash, ruby, fastlane, swift code
+Sample code:
+  - Xfile – task declaration examples
+  - tools/hooks/ – git hooks (LFS, pre-commit, prepare-commit-msg)
+  - tools/sh/ – bash scripts, Xfile children and sources (git, brew, ruby, jenkins, Xcode, iOS runtime tasks samples)
+  - tools/swift/ – swift scripts
+  - fastlane/ – ruby and fastlane scripts
 
 ## Install Xfile
 
@@ -339,15 +341,6 @@ Or in a Xfile task's code.
 ```sh
 function my_task() {
   task test_xfile
-}
-```
-
-Another option is to declare wrapper tasks and call child directly.
-
-```sh
-## --upgrade
-function brew:install_ios_utils_from_brew { ## Install repo deps with brew. Sample: x brew:install_ios_utils_from_brew --upgrade
-  child_task "$SCRIPTS_FOLDER/brew_x.sh" install_deps ## Will put original task args to call (after the given brew task name)
 }
 ```
 

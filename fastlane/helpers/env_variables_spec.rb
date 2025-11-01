@@ -1,7 +1,6 @@
 # frozen_string_literal: true
 
 require 'fastlane'
-require 'factory_bot'
 require_relative '../sd_specs'
 require_relative 'env_variables'
 

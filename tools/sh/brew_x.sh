@@ -4,6 +4,8 @@ set -eo pipefail
 
 source "$GIT_ROOT/Xfile_source/impl.sh"
 
+link_child_xfile "$GIT_ROOT/Xfile"
+
 top_level_deps=(
   bash       # Берем свежую версию, системная отстает (3 мажор, актуалка 5)
   git        # Берем свежую версию, системная отстает
@@ -24,18 +26,18 @@ top_level_deps=(
 
 # ---------- Brew setup ----------
 
-function install_brew_arm() {
+function brew:install_brew_native {
   /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 }
 
-function install_brew_x86_64() {
+function brew:install_brew_x86_64 {
   arch -x86_64 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 }
 
 # ---------- Deps ----------
 
 ## --upgrade
-function install_deps { ## install repository deps from homebrew (CLI tools and dylibs)
+function brew:install_deps {
   if ! read_flags --upgrade; then
     export HOMEBREW_NO_INSTALL_UPGRADE=true
     export HOMEBREW_NO_AUTO_UPDATE=true
@@ -49,7 +51,7 @@ function install_deps { ## install repository deps from homebrew (CLI tools and 
   log_success "brew install complete!"
 }
 
-function repack_installed_deps { ## pack installed repository brew deps to .zip
+function brew:repack_installed_deps { ## zip deps from brew (semi-portable archive)
   local brew_bins_dir
   local required_deps_str
   local repo_deps=()
@@ -87,8 +89,8 @@ function repack_installed_deps { ## pack installed repository brew deps to .zip
     "${deps_cellar_dirs[@]}"
 
   log_info "Deps and dirs count:" \
-    "Total deps: ${#repo_deps[@]} | Total dirs: ${#deps_cellar_dirs[@]}" \
-    '- Note: deps may share dir sometimes!'
+    "Total deps: ${#repo_deps[@]} | Total dirs: ${#deps_cellar_dirs[@]}"
+  log_note 'deps may share dir sometimes!'
 
   brew_bins_dir="$(which brew)"
   brew_bins_dir="${brew_bins_dir%/*}"
@@ -135,8 +137,8 @@ function repack_installed_deps { ## pack installed repository brew deps to .zip
       fi
     done
   done
-  log_info 'Resolved lib dir symlinks for packing:'
-  log "${deps_lib_symlinks[@]}"
+  log_info 'Resolved lib dir symlinks for packing:' \
+    "${deps_lib_symlinks[@]}"
 
   log_next "Resolving special cases..."
   for dep in "${repo_deps[@]}"; do
@@ -177,12 +179,12 @@ function repack_installed_deps { ## pack installed repository brew deps to .zip
 
   local zip_path="$GIT_ROOT/output/bin_repack_${mac_arch}.zip"
 
-  cd "$brew_root"
+  pushd "$brew_root" >&2
   # -y means store symlinks in ./bin, not resolved files
   zip -qyr "$zip_path" "${path_to_pack[@]}"
-  cd -
+  popd >&2
 
-  log_success '✅ Repack archive is ready!' \
+  log_success '✅ Repack archive is ready at:' \
     "$zip_path"
 }
 

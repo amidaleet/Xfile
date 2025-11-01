@@ -4,16 +4,19 @@ set -eo pipefail
 
 source "$GIT_ROOT/Xfile_source/impl.sh"
 
+# ---------- Install ----------
+
 # Idea source: https://blog.kulman.sk/faster-way-to-download-and-install-xcode/
 ## --version --start_step --beta_number --apple-silicon --universal --apps_dir --cookie
-function install { ## Load and install Xcode.app of specified version
+function xcode:install { ## Load and install Xcode.app of specified version
+  local XCODE_VERSION BETA_NUMBER COOKIE start_step APPS_DIR
   read_opt --version XCODE_VERSION
   read_opt --beta_number BETA_NUMBER
   read_opt --cookie COOKIE
   read_opt --start_step start_step
   read_opt --apps_dir APPS_DIR
 
-  assert_defined XCODE_VERSION COOKIE
+  assert_defined XCODE_VERSION
 
   export APPS_DIR=${APPS_DIR:-'/Applications'}
   if [ ! -d "$APPS_DIR" ]; then
@@ -37,8 +40,12 @@ function install { ## Load and install Xcode.app of specified version
 
   export XCODE_VERSION XIP_NAME APP_NAME TARGET_APP_NAME COOKIE
 
-  log_info "🎫 Params are:"
-  log "XCODE_VERSION = $XCODE_VERSION" "XIP_NAME = $XIP_NAME" "APP_NAME = $APP_NAME" "TARGET_APP_NAME = $TARGET_APP_NAME" "APPS_DIR = $APPS_DIR"
+  log_info "🎫 Params are:" \
+    "XCODE_VERSION = $XCODE_VERSION" \
+    "XIP_NAME = $XIP_NAME" \
+    "APP_NAME = $APP_NAME" \
+    "TARGET_APP_NAME = $TARGET_APP_NAME" \
+    "APPS_DIR = $APPS_DIR"
 
   # - Important: шаги запускаются как функции в том же scope, а не как отдельные task
   local script_steps=(
@@ -49,7 +56,7 @@ function install { ## Load and install Xcode.app of specified version
     remove_archive
     activate
   )
-  local idx=0
+  local idx=0 step
   log_info 'Script steps:'
   for step in ${script_steps[@]}; do
     log "$idx – $step"
@@ -73,6 +80,8 @@ load() {
     log_error "Missing aria2c utility, to setup: brew install aria2"
     return 4
   fi
+
+  assert_defined COOKIE
 
   log_info "⌛️ Loading Xcode using aria2"
   aria2c \
@@ -131,6 +140,50 @@ activate() {
 
   log_info "📄 Running Xcode first launch"
   echo "$SUDO_PASS" | sudo -S "$APPS_DIR/$TARGET_APP_NAME/Contents/Developer/usr/bin/xcodebuild" -runFirstLaunch
+}
+
+# ---------- Helpers ----------
+
+## --dir
+function xcode:patch_3rd_party_deps_for_arm64_simulator { ## Use arm64-to-sim to patch .xcframework sim arch in provided dir
+  local deps_dir
+  read_opt --dir deps_dir
+  assert_defined deps_dir
+
+  "$SCRIPTS_FOLDER/add_arm64_sim_archs.sh" "$deps_dir"
+}
+
+function xcode:set_header { ## Set org Xcode header template in user directory
+  log_info "Set Xcode header template in ~/Library/Developer/Xcode/UserData/"
+  cp "$TOOLS_DIR/xcode/IDETemplateMacros.plist" "$HOME/Library/Developer/Xcode/UserData/"
+
+  log_success "Updated template at: ~/Library/Developer/Xcode/UserData/, file: IDETemplateMacros.plist"
+}
+
+function xcode:remove_derived_data { ## Erase derived data folder
+  local dd_path="$(defaults read com.apple.dt.Xcode.plist IDECustomDerivedDataLocation || echo "$HOME/Library/Developer/Xcode/DerivedData")"
+
+  log_info "DerivedData path:" "$dd_path"
+
+  log "Removing DerivedData..."
+  rm -rf "$dd_path"
+  mkdir -p "$dd_path"
+  log_success "DerivedData cleaned!"
+}
+
+function xcode:fix_p12 { ## Смена алгоритма в .p12 (фиксит security: SecKeychainItemImport: MAC verification failed during PKCS12 import (wrong password?)), просит пароль серта
+  local cert_path=$1
+  assert_defined cert_path
+
+  local new_cert_path="${cert_path/.p12/_new.p12}"
+  log_info "Will save new cert to:" "$new_cert_path"
+
+  openssl pkcs12 -in "$cert_path" -out crt.pem -clcerts -nokeys
+  openssl pkcs12 -in "$cert_path" -out key.pem -nocerts -nodes
+
+  openssl pkcs12 -inkey key.pem -in crt.pem -export -legacy -out "$new_cert_path"
+
+  rm -f crt.pem key.pem
 }
 
 begin_xfile_task

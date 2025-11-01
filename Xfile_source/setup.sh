@@ -28,7 +28,8 @@ init_xfile_from_repo() {
   load_scripts xlib impl template completion \
     tests/tests \
     tests/link_root \
-    tests/child_zero tests/child_one  tests/child_two
+    tests/child_zero tests/child_one  tests/child_two \
+    tests/mock_root tests/mock_child tests/mock_child_two tests/mock_loaded_source
 
   if [ ! -f ./Xfile ]; then
     echo "Will add Xfile template, as ./Xfile is missing" 1>&2

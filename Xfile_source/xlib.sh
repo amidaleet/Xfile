@@ -13,8 +13,10 @@ print_with_emoji_and_color_header() { ## print call args as lines to stdout, add
   fi
 }
 
-color_str() { ## stdout $2 str with $1 color
-  echo -n "$(tput setaf "$1")$2$(tput sgr0)"
+color_str() { ## stdout ${@:2} strings with $1 color
+  echo -n "$(tput setaf "$1")"
+  echo -n "${@:2}"
+  echo -n "$(tput sgr0)"
 }
 
 function log() { ## print call args to stderr
@@ -43,14 +45,6 @@ function log_error() { ## print call args to stderr, with color and ❌ emoji
 
 function log_success() { ## print call args to stderr, with color and ✅ emoji
   print_with_emoji_and_color_header '✅' 2 "$@" 1>&2
-}
-
-function set_errexit_when_command_fails() { ## turn on/off errexit script option. $1 - true/false (default: true)
-  if [ "$1" = false ]; then set +o errexit; else set -o errexit; fi
-}
-
-function set_pipefail_with_rightmost_non_zero_status() { ## turn on/off pipefail script option. $1 - true/false (default: true)
-  if [ "$1" = false ]; then set +o pipefail; else set -o pipefail; fi
 }
 
 function read_args() { ## read Makefile styled script args (like: ARG=VALUE) named as call args
@@ -183,6 +177,13 @@ function assert_defined() { ## returns error code if any variable named as on of
   fi
 }
 
+function assert_abs_path() { ## returns error code if $1 is not a path starting with /
+  if [ "${1:0:1}" != '/' ]; then
+    log_error "Expected absolute path, but got:" "$1"
+    return 19
+  fi
+}
+
 function var_is_true() { ## returns error code if the value of variable named $1 is not represent true ( true, 1, YES, yes, TRUE )
   local name=$1
 
@@ -203,4 +204,65 @@ function value_in_list() { ## returns error code if $1 is not found in next call
   local e
   for e in "$@"; do [ "$match" = "$e" ] && return; done
   return 3
+}
+
+function forward_out_and_err_to_dir { ## proxy caller shell stdout and stderr streams to {out,err}.log in $1 folder. Try use 'run_with_status_marker' instead!
+  if [ -z "$1" ]; then
+    log_error 'forward_out_and_err_to_dir failed:' \
+      "Missing output dir path in \$1!" \
+      ''
+    return 3
+  fi
+
+  local p="$1"
+
+  log_note "Forwarding this shell (script/subshell) output and error streams" \
+    "- to: ./${p##"$GIT_ROOT/"}" \
+    "- called inside of '${FUNCNAME[1]}'"
+
+  if [ "$_X_FORWARD_OUT_AND_ERR_SUBSHELL" = "$BASH_SUBSHELL" ]; then
+    log_warn "Repetitive forwarding of output and error streams in the same shell (script/subshell) – $BASH_SUBSHELL." \
+      "Called inside of '${FUNCNAME[1]}'" \
+      "Will do." \
+      "But previous forwarding will remain in effect globally in this shell, fd will be chained like:"\
+      "tee -> tee -> >1 (process fd)" \
+      "Consider refactor to 'run_with_status_marker' or subshelling the task that must forward itself" \
+      ''
+  fi
+  _X_FORWARD_OUT_AND_ERR_SUBSHELL=$BASH_SUBSHELL
+
+  rm -rf "$1" || true
+  mkdir -p "$1" || return $?
+
+  exec 1> >(tee "$1/out.log")
+  exec 2> >(tee "$1/err.log" >&2)
+}
+
+function run_with_status_marker { ## proxy given command stdout and stderr streams to {out,err}.log if $1 folder, creates 'success' file if command code == 0
+  if [ $# -lt 2 ]; then
+    log_error "Expected at least 2 args: \$1 – dir, \${2...} – command. But got only $#. Args:" "$@"
+    return 43
+  fi
+
+  if [ -z "$1" ]; then
+    log_error 'run_with_status_marker failed:' \
+      "Missing output dir path in \$1!" \
+      ''
+    return 3
+  fi
+
+  local p="$1"
+
+  log_note "Forwarding output and error streams:" \
+    "- of: $(arr_to_str ' ' "${@:2}")" \
+    "- to: ./${p##"$GIT_ROOT/"}"
+  log_note "Will create 'success' file in forwarding dir, unless command fails"
+
+  rm -rf "$1" || true
+  mkdir -p "$1" || return $?
+
+  "${@:2}" \
+    1> >(tee "$1/out.log") \
+    2> >(tee "$1/err.log" >&2)
+  touch "$1/success"
 }

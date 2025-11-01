@@ -1,7 +1,7 @@
-CHRUBY_VERSION="0.3.9"
+CHRUBY_VERSION="0.3.9" # modified locally!
 RUBIES=()
 
-for dir in "$PREFIX/opt/rubies" "$HOME/.rubies" "$HOME/.rbenv/versions"; do
+for dir in "$HOME/.rubies" "$HOME/.rbenv/versions" "$PREFIX/opt/rubies"; do
 	[[ -d "$dir" && -n "$(ls -A "$dir")" ]] && RUBIES+=("$dir"/*)
 done
 unset dir
@@ -84,6 +84,7 @@ function chruby()
 				case "${dir##*/}" in
 					"$1")	match="$dir" && break ;;
 					*"$1"*)	match="$dir" ;;
+					*) ;;
 				esac
 			done
 

@@ -2,10 +2,9 @@
 
 set -eo pipefail
 
-if ! ./Xfile git:assert_no_snapshot_fail_artifacts --staged; then
-  exit 1
+FLAGS=''
+if ps -ocommand= -p "$PPID" | grep -q -e '--amend'; then
+  FLAGS="--amend"
 fi
 
-./Xfile git:move_forgotten_files_to_lfs --staged
-./Xfile format_swift
-./Xfile lint_swift
+./Xfile pre_commit ${FLAGS:+"$FLAGS"}
