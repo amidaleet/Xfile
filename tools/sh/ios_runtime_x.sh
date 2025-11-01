@@ -8,14 +8,16 @@ source "$GIT_ROOT/Xfile_source/impl.sh"
 # https://developer.apple.com/documentation/xcode/installing-additional-simulator-runtimes
 
 ## --version --cookie
-function install {
+function ios_runtime:install {
+  local COOKIE
   read_opt --cookie COOKIE
 
-  if [ -n "$COOKIE" ]; then install_with_aria2; else install_with_xcode; fi
+  if [ -n "$COOKIE" ]; then task install_with_aria2 "$@"; else task install_with_xcode "$@"; fi
 }
 
 ## --version
 install_with_xcode() {
+  local VERSION
   read_opt --version VERSION
   assert_defined VERSION
 
@@ -43,6 +45,7 @@ install_with_xcode() {
 
 ## --version --cookie
 install_with_aria2() {
+  local VERSION COOKIE
   read_opt --version VERSION
   read_opt --cookie COOKIE
   assert_defined VERSION COOKIE
@@ -79,7 +82,8 @@ install_with_aria2() {
   log_success "Installed iOS ${VERSION} Runtime"
 }
 
-function fix_missing { ## Fix "missing" iOS images, reinstalling runtime (bug with image unmount in /Library/Developer/CoreSimulator/Volumes)
+function ios_runtime:fix_missing { ## Fix "missing" iOS images, reinstalling runtime (bug with image unmount in /Library/Developer/CoreSimulator/Volumes)
+  local caller_dir=$PWD
   local tmp_folder="$HOME/dx_cache/images"
   log "Will use $tmp_folder as temporary iOS runtime images store"
   rm -rf "$tmp_folder"
@@ -90,6 +94,7 @@ function fix_missing { ## Fix "missing" iOS images, reinstalling runtime (bug wi
   ls -- *.dmg
 
   log_info "Saving runtime images"
+  local image
   for image in *.dmg; do
     if [ ! -f "$image" ]; then
       continue
@@ -103,6 +108,7 @@ function fix_missing { ## Fix "missing" iOS images, reinstalling runtime (bug wi
 
   log_info "Adding runtime images"
   cd "$tmp_folder"
+  local image
   for image in *.dmg; do
     if [ ! -f "$image" ]; then
       continue
@@ -112,7 +118,9 @@ function fix_missing { ## Fix "missing" iOS images, reinstalling runtime (bug wi
   done
 
   rm -rf "$tmp_folder"
+
   log_success "All iOS runtimes has been re-added!"
+  cd "$caller_dir"
 }
 
 begin_xfile_task

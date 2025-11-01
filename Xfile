@@ -1,26 +1,17 @@
 #!/usr/bin/env bash
 
-if [ "$_OUTPUT_LINE_BUFFERED" != true ]; then
+set -eo pipefail
+
+if [ -z "$_OUTPUT_LINE_BUFFERED" ]; then
   export _OUTPUT_LINE_BUFFERED=true
   if command -v stdbuf >/dev/null; then exec stdbuf -oL -eL "$0" "$@"; fi
 fi
 
-set -eo pipefail
-
-export GIT_ROOT="${GIT_ROOT:-"${PWD:-"$(pwd)"}"}"
+GIT_ROOT="${GIT_ROOT:-"${PWD:-"$(pwd)"}"}"
+export GIT_ROOT
 export SCRIPTS_FOLDER="$GIT_ROOT/tools/sh"
 
 source "$GIT_ROOT/Xfile_source/impl.sh"
-
-link_child_xfile "$GIT_ROOT/Xfile_source/tests/tests.sh"
-link_child_xfile "$SCRIPTS_FOLDER/git_x.sh"
-link_child_xfile "$SCRIPTS_FOLDER/ruby_x.sh"
-link_child_xfile "$SCRIPTS_FOLDER/brew_x.sh" brew:
-link_child_xfile "$SCRIPTS_FOLDER/Xcode_x.sh" xcode:
-link_child_xfile "$SCRIPTS_FOLDER/ios_runtime_x.sh" ios_runtime:
-link_child_xfile "$SCRIPTS_FOLDER/jenkins_x.sh" jenkins_
-
-if [ -f "$GIT_ROOT/usr/xprofile" ]; then source "$GIT_ROOT/usr/xprofile"; fi
 
 export IS_CI=false
 if [ -n "$JENKINS_HOME" ] || [ -n "$JENKINS_URL" ]; then IS_CI=true; fi
@@ -35,6 +26,24 @@ RUBY_SCRIPTS_DIR="$GIT_ROOT/fastlane/scripts"
 SWIFT_SCRIPTS_DIR="$TOOLS_DIR/swift/scripts"
 GIT_HOOKS_DIR="$TOOLS_DIR/hooks"
 
+# iOS Simulator Configuration
+export XCODE_VERSION='16.4'
+export IOS_SIMULATOR_DEVICE_TYPE='iPhone 16'
+export IOS_SIMULATOR_RUNTIME_VERSION='18.5'
+
+export LC_ALL='en_US.UTF-8'
+export LANG='en_US.UTF-8'
+
+load_source "$SCRIPTS_FOLDER/git_x.sh"
+load_source "$SCRIPTS_FOLDER/ruby_x.sh"
+load_optional_source "$GIT_ROOT/usr/xprofile"
+
+link_child_xfile "$SCRIPTS_FOLDER/brew_x.sh"
+link_child_xfile "$SCRIPTS_FOLDER/Xcode_x.sh"
+link_child_xfile "$SCRIPTS_FOLDER/ios_runtime_x.sh"
+link_child_xfile "$SCRIPTS_FOLDER/jenkins_x.sh"
+link_child_xfile "$GIT_ROOT/Xfile_source/tests/tests.sh"
+
 # ---------- Setup ----------
 
 function install_deps { ## Install required dependencies for development
@@ -46,7 +55,7 @@ function install_deps { ## Install required dependencies for development
 }
 
 function install_ruby { ## Install Ruby version from .ruby-version file
-  local ruby_version="$(cat .ruby-version)"
+  local ruby_version=$(get_ruby_repository_version)
   task ruby_lang_installer --version "$ruby_version" --skip-existing
 }
 
@@ -65,132 +74,48 @@ function setup { ## Prepare environment for development
   log_success "Setup finished!"
 }
 
-function setup_git { ## Configure git (hooks, LFS, config)
-  # Custom git hooks changes hooksPath in local git config.
-  # We need to do it before git-lfs setup, because lfs uses hooks too.
-  task install_git_hooks
-
-  log_info "Install git-lfs to local git"
-  git lfs install --local --manual 1>/dev/null
-  log "✅ git hooks have been set up above, you should not change them manually"
-
-  log_info "Setting local config"
-  git config --local lfs.locksverify true
-  git config --local push.autoSetupRemote true
-
-  log_info "Download files from LFS"
-  git lfs pull
-}
-
-function install_git_hooks { ## Install helpful git hooks (branch name checker, add template commit message)
-  "$GIT_HOOKS_DIR/make_hooks.sh"
-}
-
-# ---------- brew (CLI bins) ----------
-
-function brew:install_ios_utils_from_repack {
-  brew:check_dx_utils_env
-
-  local mac_arch="${MY_ARCH:-"$(uname -m)"}"
-  log_info "Detected mac arch: $mac_arch"
-
-  local zip_path="$GIT_ROOT/output/bin_repack_${mac_arch}.zip"
-  local repack_extraction_dir="$GIT_ROOT/output/bin_repack"
-
-  log_warn "Loading is missing in this implementation!"
-  log_next "Will unpack .zip from: $zip_path to: $repack_extraction_dir"
-  rm -rf "$repack_extraction_dir"
-  mkdir -p "$repack_extraction_dir"
-  unzip -q "$zip_path" -d "$repack_extraction_dir"
-
-  log_next "Will install utils for arch $mac_arch"
-
-  rm -rf "${DX_SHELL_UTILS_DIR:?}"/{*,.*} || true
-  mkdir -p "$DX_SHELL_UTILS_DIR"
-
-  mv -v "$repack_extraction_dir"/* "$DX_SHELL_UTILS_DIR"
-}
-
-function brew:link_dylib_to_utils_dir {
-  brew:check_dx_utils_env
-
-  local mac_arch="${MY_ARCH:-"$(uname -m)"}"
-  log_info "Detected mac arch: $mac_arch"
-
-  local brew_dir
-  case "${mac_arch}" in
-    arm64)
-      brew_dir='/opt/homebrew'
-      ;;
-    x86_64)
-      brew_dir='/usr/local'
-      ;;
-    *)
-      log_error 'Unknown macOS arch!'
-      return 3
-      ;;
-  esac
-
-  log_next "Will add symlinks to:" "$brew_dir"
-
-  cd "$brew_dir"
-  sudo ln -s "$DX_SHELL_UTILS_DIR/opt" opt
-  sudo ln -s "$DX_SHELL_UTILS_DIR/lib" lib
-}
-
-function brew:check_dx_utils_env {
-  log_info 'ENV is:' \
-    "📌 DX_SHELL_UTILS_DIR" \
-    "$DX_SHELL_UTILS_DIR" \
-    "📌 PATH" \
-    "$PATH"
-
-  if [ -z "$DX_SHELL_UTILS_DIR" ]; then
-    log_error "DX_SHELL_UTILS_DIR is missing in ENV"
-    # shellcheck disable=SC2016
-    log_info '.zprofile sample:' \
-      '' \
-      'export DX_SHELL_UTILS_DIR="$HOME/Development/dx_utils"' \
-      'export PATH="$DX_SHELL_UTILS_DIR/bin:$PATH"' \
-      ''
-    return 64
-  fi
-
-  if [[ "$PATH" != *"$DX_SHELL_UTILS_DIR/bin:"* ]]; then
-    log_error "DX_SHELL_UTILS_DIR is missing in PATH"
-    # shellcheck disable=SC2016
-    log_info '.zprofile sample:' \
-      '' \
-      'export DX_SHELL_UTILS_DIR="$HOME/Development/dx_utils"' \
-      'export PATH="$DX_SHELL_UTILS_DIR/bin:$PATH"' \
-      ''
-    return 64
-  fi
-}
-
 # ---------- Xcode ----------
 
-## --dir
-function xcode:patch_3rd_party_deps_for_arm64_simulator { ## Use arm64-to-sim to patch .xcframework sim arch in provided dir
-  read_opt --dir deps_dir
-  assert_defined deps_dir
-
-  "$SCRIPTS_FOLDER/add_arm64_sim_archs.sh" "$deps_dir"
-}
-
-function xcode:set_header { ## Set org Xcode header template in user directory
-  log_info "Set Xcode header template in ~/Library/Developer/Xcode/UserData/"
-  cp "$TOOLS_DIR/xcode/IDETemplateMacros.plist" "$HOME/Library/Developer/Xcode/UserData/"
-
-  log "✅ Updated template at: ~/Library/Developer/Xcode/UserData/, file: IDETemplateMacros.plist"
-}
-
 function remove_ios_simulators { ## Remove all iOS simulators from Xcode
-  task fastlane remove_ios_simulators
+  log '🧹  Will remove all iOS Simulators'
+  xcrun simctl delete all
+  log '🗑️  Removed all iOS Simulators'
 }
 
-function add_ios_simulator_for_tests { ## Add/Update targeted iOS simulator for tests in Workspace
-  task fastlane add_ios_simulator_for_tests
+function localize_device_to_ru { ## Localize iOS simulator to Russian using template plist
+  local device_udid
+  read_opt --device_udid device_udid
+  assert_defined device_udid
+
+  local device_home="$HOME/Library/Developer/CoreSimulator/Devices/${device_udid}"
+  local global_prefs_plist="$device_home/data/Library/Preferences/.GlobalPreferences.plist"
+  local template_plist="$GIT_ROOT/templates/simulator/GlobalPreferences.plist"
+
+  mkdir -p "$(dirname "$global_prefs_plist")"
+  cp -f "$template_plist" "$global_prefs_plist"
+
+  log "🇷🇺 Set language and locale for simulator ${device_udid}"
+}
+
+function add_ios_simulator_for_tests { ## Add iOS device simulator for Monorepo tests in Workspace
+  local device_name="Xcode ${XCODE_VERSION}, iOS ${IOS_SIMULATOR_RUNTIME_VERSION}"
+  local device_type_id="com.apple.CoreSimulator.SimDeviceType.${IOS_SIMULATOR_DEVICE_TYPE// /-}"
+  local runtime_id="com.apple.CoreSimulator.SimRuntime.iOS-${IOS_SIMULATOR_RUNTIME_VERSION//\./-}"
+
+  log_next "Will try create device:" \
+    "- runtime_id: $runtime_id" \
+    "- device_type_id: $device_type_id" \
+    "- name: $device_name"
+
+  local device_udid
+  device_udid=$(xcrun simctl create "${device_name}" "${device_type_id}" "${runtime_id}")
+
+  task localize_device_to_ru --device_udid "$device_udid"
+
+  defaults write com.apple.dt.Xcode DVTDeviceVisibilityPreferences -dict-add "${device_udid}" -int 1
+  log "👁️  Made '${device_name}' always visible in Xcode dropdown menu"
+
+  log_success "iOS Simulator for tests run to your Xcode, name: ${device_name}, udid: ${device_udid}"
 }
 
 function print_swift_test_results_json_for_analytics_event { ## Find test case total, fails and skips in logs Xcode test scheme run logs (out: json)
@@ -225,8 +150,7 @@ function test_tools { ## Run all tools unit tests
 }
 
 function test_fastlane_tools { ## Run fastlane unit tests
-  log_info "Test fastlane actions"
-  ruby_bundle exec rspec --pattern "tools/ruby/{**}/*_spec.rb"
+  ruby_bundle exec rspec --pattern "fastlane/{**}/*_spec.rb"
 }
 
 # ---------- Lint & Format ----------
@@ -237,7 +161,7 @@ function format { ## Format modified files
 }
 
 function format_swift { ## Format modified .swift files
-  local filesArr=()
+  local filesArr=() file
 
   for file in $(git diff --cached --name-only --diff-filter=ACM -- '*.swift'); do
     filesArr+=("$file")
@@ -256,7 +180,7 @@ function format_swift { ## Format modified .swift files
 
 function format_ruby { ## Format .rb files
   log_info "🚧 Format ruby with rubocop"
-  task ruby_bundle exec rubocop -a --format simple
+  ruby_bundle exec rubocop -a --format simple
   log "✅ rubocop finished without offenses 🚧"
 }
 
@@ -266,7 +190,7 @@ function lint {
 }
 
 function lint_swift { ## Lint modified .swift files
-  local filesArr=()
+  local filesArr=() file
 
   for file in $(git diff --cached --name-only --diff-filter=ACM -- '*.swift'); do
     filesArr+=("$file")
@@ -283,17 +207,26 @@ function lint_swift { ## Lint modified .swift files
 }
 
 function lint_ruby { ## Lint all Ruby files
-  task ruby_bundle exec rubocop --lint
+  ruby_bundle exec rubocop --lint
 }
 
 # ---------- Agent information ----------
 
 function get_os_name {
-  "$SCRIPTS_FOLDER/get_os_name.sh"
+  case "$(uname)" in
+    'Linux') echo "linux" ;;
+    'Darwin') echo "macOS" ;;
+    *) echo "unknown" ;;
+  esac
 }
 
 function get_os_version {
-  "$SCRIPTS_FOLDER/get_os_version.sh"
+  if [ -f /etc/os-release ]; then
+    source /etc/os-release
+    echo "$VERSION_ID"
+  else
+    sw_vers -productVersion
+  fi
 }
 
 function bash_version { ## log bash version (which runs Xfile)
@@ -363,32 +296,6 @@ function assert_semver {
     log_error "Bad semver: $1"
     return 9
   fi
-}
-
-# ---------- Xfile override ----------
-
-show_tasks() {
-  show_tasks_from "$0"
-  show_tasks_from_linked_children
-  show_tasks_from Xfile_source/impl.sh "⚙️ impl functions:"
-  show_tasks_from Xfile_source/xlib.sh "📚 xlib functions:"
-  if [ -f usr/xprofile ]; then show_tasks_from usr/xprofile "👤 Personal xprofile tasks:"; fi
-}
-
-task_names() {
-  show_task_names_from Xfile
-  show_task_names_from_linked_children
-  show_task_names_from Xfile_source/impl.sh
-  show_task_names_from Xfile_source/xlib.sh
-  if [ -f usr/xprofile ]; then show_task_names_from usr/xprofile; fi
-}
-
-task_args() {
-  impl:task_args "$1" Xfile \
-    || impl:task_args_in_linked_children "$1" \
-    || impl:task_args "$1" Xfile_source/impl.sh \
-    || impl:task_args "$1" Xfile_source/xlib.sh \
-    || impl:task_args "$1" usr/xprofile
 }
 
 begin_xfile_task

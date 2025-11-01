@@ -2,27 +2,32 @@
 
 source 'http://rubygems.org'
 
-gem 'cocoapods', '1.15.0'
-gem 'fastlane', '2.220.0'
-gem 'nokogiri', '1.16.3' # manually adding x86_64-darwin in .lock
-gem 'simctl', '1.6.10'
-gem 'xcodeproj', '1.24.0'
-
-group :development do
-  gem 'parallel', '1.24.0'
-  gem 'rubocop', '1.62.1'
-  gem 'rubocop-daemon', '0.3.2'
-  gem 'rubocop-performance', '1.21.0'
-  gem 'rubocop-require_tools', '0.1.2'
-  gem 'rubocop-rspec', '2.29.1'
-  gem 'solargraph', '0.50.0'
-  gem 'yard', '0.9.36'
-
-  # :test
-  gem 'factory_bot', '6.4.6'
-  gem 'fuubar', '2.5.1'
-  gem 'rspec', '3.13.0'
+group :xcode do
+  gem 'cocoapods'
 end
 
-plugins_path = File.join(File.dirname(__FILE__), 'fastlane', 'Pluginfile')
-eval_gemfile(plugins_path) if File.exist?(plugins_path)
+group :fastlane do
+  gem 'fastlane'
+  gem 'simctl'
+  gem 'xcodeproj'
+  gem 'parallel'
+
+  plugins_path = File.join(File.dirname(__FILE__), 'fastlane', 'Pluginfile')
+  eval_gemfile(plugins_path) if File.exist?(plugins_path)
+end
+
+group :code do
+  gem 'rubocop'
+  gem 'rubocop-daemon'
+  gem 'rubocop-performance'
+  gem 'rubocop-require_tools'
+  gem 'rubocop-rspec'
+  gem 'rubocop-factory_bot'
+  gem 'solargraph'
+  gem 'yard'
+end
+
+group :test do
+  gem 'rspec'
+  gem 'fuubar'
+end

@@ -1,15 +1,14 @@
-enable=all
+external-sources=true
 source-path=SCRIPTDIR
-disable=SC2154
-disable=SC2292
+
+enable=all
+
 disable=SC2046
 disable=SC2312
 disable=SC2068
-disable=SC2250
 disable=SC2155
-disable=SC2120
-disable=SC2164 # 'set -e' covers that
-
-# If you're having issues with shellcheck following source, disable the errors via:
-# disable=SC1090
-# disable=SC1091
+disable=SC2250 # '${var}' preference over '$var' can be too verbose
+disable=SC2154 # shellcheck cannot see our assignments in 'read_'* calls
+disable=SC2292 # '[[ ]]' preference over '[ ]' is not useful at many places
+disable=SC2120 # shellcheck cannot see call dynamic side for 'task'
+disable=SC2164 # 'errexit' option covers that

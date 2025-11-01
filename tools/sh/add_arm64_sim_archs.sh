@@ -130,10 +130,10 @@ add_arm64_sim_to_dynamic() {
 
 add_arm64_sim_to_static() {
   mkdir "$ARM64_SIMULATOR_DIR"
-  pushd "$ARM64_SIMULATOR_DIR" >/dev/null
+  pushd "$ARM64_SIMULATOR_DIR" >&2
   log 'Unarchiving arm64 binary on .o files'
   ar -x "$ARM64_DEVICE_PATH"
-  popd >/dev/null
+  popd >&2
 
   for file in "$ARM64_SIMULATOR_DIR"/*.o "$ARM64_SIMULATOR_DIR"/**/*.o; do
     [ -e "$file" ] || continue
