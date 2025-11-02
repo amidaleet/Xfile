@@ -135,11 +135,6 @@ function begin_xfile_task { ## Xfile task starting point, should be called after
     help 2>/dev/null
     return
   fi
-  if value_in_list "$task_name" \
-    task process _task_in_child _call_child_impl_task _task_exit_trap; then
-    log_error 'Caught rude attempt to call private API (or meaningless call)!' "${_SCRIPT_ARGS_ARR[@]}"
-    return 9
-  fi
 
   if task_declared "$task_name" 2>/dev/null; then
     if [ -n "$_X_TASK_STACK_STR" ]; then
@@ -154,39 +149,38 @@ function begin_xfile_task { ## Xfile task starting point, should be called after
     _log_move_from_task $?
   elif child_idx=$(try_find_child_with_task "$task_name"); then
     try_run_task_in_child "$child_idx" "$task_name"
+    return $?
   else
-    log_error "🤔 No task named: '$task_name' in this Xfile or linked children!" \
-      'Maybe misspelled?' \
-      'Try: x help' \
-      'Call args:' "${_SCRIPT_ARGS_ARR[@]}"
+    _log_x_task_is_undeclared "${_SCRIPT_ARGS_ARR[@]}"
     return 8
   fi
 }
 
 function task { ## Call declared function, use "$@" as _SCRIPT_ARGS_ARR inside
-  local _SCRIPT_ARGS_ARR=("$@")
+  local _SCRIPT_ARGS_ARR=("$@") task_name=$1 child_idx
 
-  if ! task_declared "$1"; then
-    # cannot be func call
-    # begin_xfile_task will safely end up in either: _task_in_child || return err
-    begin_xfile_task
+  if task_declared "$task_name" 2>/dev/null; then
+    if [ "$_X_TASK_STACK_BASH_SUBSHELL" != "$BASH_SUBSHELL" ]; then
+      # task call inside new subshell shall log only subshell tasks stack part
+      log_warn "Detected task call from subshell – $BASH_SUBSHELL." \
+        "'task' called inside of '${FUNCNAME[1]}'" \
+        ''
+      _X_TASK_STACK_LENGTH_IN_SUBSHELL=0
+      _X_TASK_STACK_BASH_SUBSHELL=$BASH_SUBSHELL
+    fi
+    _log_move_to_task "$task_name" func
+    (( ++_X_TASK_STACK_LENGTH_IN_SUBSHELL ))
+    trap '_task_exit_trap $? "$BASH_COMMAND"' EXIT
+    "$@"
+    (( _X_TASK_STACK_LENGTH_IN_SUBSHELL-- ))
+    _log_move_from_task $?
+  elif child_idx=$(try_find_child_with_task "$task_name"); then
+    try_run_task_in_child "$child_idx" "$task_name"
     return $?
+  else
+    _log_x_task_is_undeclared "${_SCRIPT_ARGS_ARR[@]}"
+    return 8
   fi
-
-  if [ "$_X_TASK_STACK_BASH_SUBSHELL" != "$BASH_SUBSHELL" ]; then
-    # task call inside new subshell shall log only subshell tasks stack part
-    log_warn "Detected task call from subshell – $BASH_SUBSHELL." \
-      "'task' called inside of '${FUNCNAME[1]}'" \
-      ''
-    _X_TASK_STACK_LENGTH_IN_SUBSHELL=0
-    _X_TASK_STACK_BASH_SUBSHELL=$BASH_SUBSHELL
-  fi
-  _log_move_to_task "$1" func
-  (( ++_X_TASK_STACK_LENGTH_IN_SUBSHELL ))
-  trap '_task_exit_trap $? "$BASH_COMMAND"' EXIT
-  "$@"
-  (( _X_TASK_STACK_LENGTH_IN_SUBSHELL-- ))
-  _log_move_from_task $?
 }
 
 _task_exit_trap() {
@@ -207,23 +201,25 @@ _task_exit_trap() {
 }
 
 function process { ## run task (as new bash process) passing call args
-  if ! task_declared "$1" 2>/dev/null; then
-    # cannot be func call
-    # begin_xfile_task will safely end up in either: _task_in_child || return err
-    local _SCRIPT_ARGS_ARR=("$@")
-    begin_xfile_task
-    return $?
-  fi
+  local _SCRIPT_ARGS_ARR=("$@") task_name=$1 child_idx
 
-  _log_move_to_task "$1"
-  local _X_FAILED_COMMAND
-  _cache_failed_command_for_logging "$@"
-  local code=0
-  # will call: same Xfile as _new process_ -> begin_xfile_task -> func call -> ...
-  _X_CALLED_FROM_XFILE_OR_CHILD=true \
-    "$THIS_XFILE_PATH" "$@" || { code=$?; }
-  _log_move_from_task "$code" "$_X_FAILED_COMMAND"
-  return "$code"
+  if task_declared "$task_name" 2>/dev/null; then
+    _log_move_to_task "$task_name"
+    local _X_FAILED_COMMAND
+    _cache_failed_command_for_logging "$@"
+    local code=0
+    # will call: same Xfile as _new process_ -> begin_xfile_task -> func call -> ...
+    _X_CALLED_FROM_XFILE_OR_CHILD=true \
+      "$THIS_XFILE_PATH" "$@" || { code=$?; }
+    _log_move_from_task "$code" "$_X_FAILED_COMMAND"
+    return "$code"
+  elif child_idx=$(try_find_child_with_task "$task_name"); then
+    try_run_task_in_child "$child_idx" "$task_name"
+    return $?
+  else
+    _log_x_task_is_undeclared "${_SCRIPT_ARGS_ARR[@]}"
+    return 8
+  fi
 }
 
 _task_in_child() { ## ## Private API. Runs task in child, task should checked to be declared beforehand
@@ -254,6 +250,14 @@ _call_child_impl_task() { ## Private API, runs child task which expected to be f
 
 function task_declared { ## returns error code if $1 is not a declared as function in this Xfile or sourced files
   declare -F "$1" >/dev/null
+}
+
+_log_x_task_is_undeclared() {
+  log_error "🤔 No task named: '$1' in this Xfile or linked children!" \
+    'Maybe misspelled?' \
+    'Try: x help' \
+    'Call args:' \
+    "$@"
 }
 
 _log_move_to_task() { ## Private API. Handles CALL STACK
