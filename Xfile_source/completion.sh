@@ -7,7 +7,7 @@ function bind_xfile_completion() {
         if (( ${#words} > 2 )); then
           # 2 or more args: suggest task_args for the given task name
           local task_args
-          task_args=$(./Xfile task_args "${words[2]}")
+          task_args=$(./Xfile task_args "${words[2]}" 2>/dev/null)
           if [[ $? -eq 0 && -n "$task_args" ]]; then
             # shellcheck disable=SC2086 # zsh: split words intentionally
             compadd -Q -- ${=task_args}
@@ -15,7 +15,7 @@ function bind_xfile_completion() {
         else
           # 1 arg: suggest task_names
           local task_names
-          task_names=$(./Xfile task_names)
+          task_names=$(./Xfile task_names 2>/dev/null)
           if [[ $? -eq 0 && -n "$task_names" ]]; then
             # shellcheck disable=SC2086 # zsh: split words intentionally
             compadd -Q -- ${=task_names}
@@ -33,7 +33,7 @@ function bind_xfile_completion() {
         if [[ ${#COMP_WORDS[@]} -gt 2 ]]; then
           # 2 or more args: suggest task_args for the given task name
           local task_args
-          task_args=$(./Xfile task_args "${COMP_WORDS[1]}")
+          task_args=$(./Xfile task_args "${COMP_WORDS[1]}" 2>/dev/null)
           if [[ $? -eq 0 && -n "$task_args" ]]; then
             # shellcheck disable=SC2206 # bash/zsh completion: split words into array intentionally
             COMPREPLY=( $task_args )
@@ -43,7 +43,7 @@ function bind_xfile_completion() {
         else
           # 1 arg: suggest task_names
           local task_names
-          task_names=$(./Xfile task_names)
+          task_names=$(./Xfile task_names 2>/dev/null)
           if [[ $? -eq 0 && -n "$task_names" ]]; then
             # shellcheck disable=SC2206 # bash/zsh completion: split words into array intentionally
             COMPREPLY=( $task_names )
@@ -77,7 +77,7 @@ function bind_xfile_completion() {
           fi
         done
 
-        task_args=$(./Xfile task_args "$task_name")
+        task_args=$(./Xfile task_args "$task_name" 2>/dev/null)
         if [[ $? -eq 0 && -n "$task_args" ]]; then
           # shellcheck disable=SC2207 # bash completion expects array from command substitution
           COMPREPLY=( $(compgen -W "$task_args" -- "${COMP_WORDS[$COMP_CWORD]}") )
@@ -87,7 +87,7 @@ function bind_xfile_completion() {
       else
         # 1 arg: suggest task_names
         local task_names
-        task_names=$(./Xfile task_names)
+        task_names=$(./Xfile task_names 2>/dev/null)
         if [[ $? -eq 0 && -n "$task_names" ]]; then
           # shellcheck disable=SC2207 # bash completion expects array from command substitution
           COMPREPLY=( $(compgen -W "$task_names" -- "${COMP_WORDS[$COMP_CWORD]}") )

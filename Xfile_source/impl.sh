@@ -22,7 +22,7 @@ impl:task_args() { ## list $1 task args from $2 file (default: $THIS_XFILE_PATH)
   if [ ! -f "$file" ]; then return 4; fi
 
   local decl_lines
-  decl_lines=$(grep -B 1 -m 1 -E "^(function $1(\(\))?|$1\(\)) ({|\().*" "$file")
+  decl_lines=$(grep -a -B 1 -m 1 -E "^(function $1(\(\))?|$1\(\)) ({|\().*" "$file" || true)
 
   if [ -z "$decl_lines" ]; then return 3; fi
 
@@ -47,7 +47,7 @@ show_task_names_from() { ## print task names list from $1 file, $2 – optional 
   if [ ! -f "$1" ]; then return 5; fi
 
   local func_decl_first_lines
-  func_decl_first_lines=$(grep -E '^function [a-zA-Z0-9_:]+(\(\))? ({|\().*' "$1" || true)
+  func_decl_first_lines=$(grep -aE '^function [a-zA-Z0-9_:]+(\(\))? ({|\().*' "$1" || true)
 
   if [ -z "$func_decl_first_lines" ]; then return 0; fi
 
@@ -81,7 +81,7 @@ show_tasks_from() { ## print task descriptions list from $1 file, $2 – header 
   fi
 
   local marks_and_func_first_lines
-  marks_and_func_first_lines=$(grep -E '(^function [a-zA-Z0-9_:]+(\(\))? ({|\().*)|(^# ----------).*' "$1" || true)
+  marks_and_func_first_lines=$(grep -aE '(^function [a-zA-Z0-9_:]+(\(\))? ({|\().*)|(^# ----------).*' "$1" || true)
 
   if [ -z "$marks_and_func_first_lines" ]; then
     log_warn "No any visible tasks! You shall define some like 'function my_task() {' in your Xfile"
@@ -333,7 +333,7 @@ function load_source { ## source $1, capture path for help
 function load_optional_source { ## source $1 if file exist, capture path for help
   assert_abs_path "$1"
   if [ ! -f "$1" ]; then
-    return
+    return 0
   fi
   _LOADED_SOURCE_FILES+=("$1")
   source "$1"
