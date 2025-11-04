@@ -373,197 +373,197 @@ function test_xfile_dispatch() { ## Check how tasks are called and logged
   local has_problems=false
 
   assert_mock_root_output_and_err test_tasks_chain_in_root <<'HEREDOC'
-🏃‍♀️‍➡️ [36min: (mock_root.sh) func test_tasks_chain_in_root(B[m
-🏃‍♀️‍➡️ [36min: (mock_root.sh) func test_tasks_chain_in_root > (mock_root.sh) func root_stack_1(B[m
+🚀 [34mdo: [mock_root.sh] test_tasks_chain_in_root(B[m
+🌚 [34min: [mock_root.sh] test_tasks_chain_in_root > [mock_root.sh] root_stack_1(B[m
 root_stack_1 start
 from test_tasks_chain_in_root
-🏃‍♀️‍➡️ [36min: (mock_root.sh) func test_tasks_chain_in_root > (mock_root.sh) func root_stack_1 > (mock_root.sh) func root_stack_2(B[m
+🌚 [34min: [mock_root.sh] test_tasks_chain_in_root > [mock_root.sh] root_stack_1 > [mock_root.sh] root_stack_2(B[m
 root_stack_2 start
 from root_stack_1
 root_stack_2 end without err
-🏃🏻‍♀️ [34mout: (mock_root.sh) func test_tasks_chain_in_root > (mock_root.sh) func root_stack_1 < (mock_root.sh) func root_stack_2(B[m
+🌝 [36mout: [mock_root.sh] test_tasks_chain_in_root > [mock_root.sh] root_stack_1 < [mock_root.sh] root_stack_2(B[m
 root_stack_1 end without err
-🏃🏻‍♀️ [34mout: (mock_root.sh) func test_tasks_chain_in_root < (mock_root.sh) func root_stack_1(B[m
-👍 [34mdone: (mock_root.sh) func test_tasks_chain_in_root(B[m
+🌝 [36mout: [mock_root.sh] test_tasks_chain_in_root < [mock_root.sh] root_stack_1(B[m
+👍 [36mdone: [mock_root.sh] test_tasks_chain_in_root(B[m
 HEREDOC
 
   assert_mock_root_output_and_err test_tasks_chain_in_root_fails <<'HEREDOC'
-🏃‍♀️‍➡️ [36min: (mock_root.sh) func test_tasks_chain_in_root_fails(B[m
-🏃‍♀️‍➡️ [36min: (mock_root.sh) func test_tasks_chain_in_root_fails > (mock_root.sh) func root_stack_1(B[m
+🚀 [34mdo: [mock_root.sh] test_tasks_chain_in_root_fails(B[m
+🌚 [34min: [mock_root.sh] test_tasks_chain_in_root_fails > [mock_root.sh] root_stack_1(B[m
 root_stack_1 start
 from test_tasks_chain_in_root_fails
-🏃‍♀️‍➡️ [36min: (mock_root.sh) func test_tasks_chain_in_root_fails > (mock_root.sh) func root_stack_1 > (mock_root.sh) func root_stack_2(B[m
+🌚 [34min: [mock_root.sh] test_tasks_chain_in_root_fails > [mock_root.sh] root_stack_1 > [mock_root.sh] root_stack_2(B[m
 root_stack_2 start
 from root_stack_1
-💥 [31mat: (mock_root.sh) func test_tasks_chain_in_root_fails > (mock_root.sh) func root_stack_1 > (mock_root.sh) func root_stack_2(B[m
+💥 [31mat: [mock_root.sh] test_tasks_chain_in_root_fails > [mock_root.sh] root_stack_1 < [mock_root.sh] root_stack_2(B[m
 💥 7 from command:
 💥 return "$1"
-💥 [31mat: (mock_root.sh) func test_tasks_chain_in_root_fails > (mock_root.sh) func root_stack_1(B[m
-💥 [31mfailed: (mock_root.sh) func test_tasks_chain_in_root_fails(B[m
+💥 [31mat: [mock_root.sh] test_tasks_chain_in_root_fails < [mock_root.sh] root_stack_1(B[m
+💥 [31mfailed: [mock_root.sh] test_tasks_chain_in_root_fails(B[m
 HEREDOC
 
   assert_mock_root_output_and_err test_tasks_chain_from_root_to_child <<'HEREDOC'
-🏃‍♀️‍➡️ [36min: (mock_root.sh) func test_tasks_chain_from_root_to_child(B[m
-🏃‍♀️‍➡️ [36min: (mock_root.sh) func test_tasks_chain_from_root_to_child > (mock_child.sh) child_stack_1(B[m
+🚀 [34mdo: [mock_root.sh] test_tasks_chain_from_root_to_child(B[m
+🌚 [34min: [mock_root.sh] test_tasks_chain_from_root_to_child > [mock_child.sh] child_stack_1(B[m
 child_stack_1 start
 from test_tasks_chain_from_root_to_child
-🏃‍♀️‍➡️ [36min: (mock_root.sh) func test_tasks_chain_from_root_to_child > (mock_child.sh) child_stack_1 > (mock_child.sh) func child_stack_2(B[m
+🌚 [34min: [mock_root.sh] test_tasks_chain_from_root_to_child > [mock_child.sh] child_stack_1 > [mock_child.sh] child_stack_2(B[m
 child_stack_2 start
 from child_stack_1
 child_stack_2 end without err
-🏃🏻‍♀️ [34mout: (mock_root.sh) func test_tasks_chain_from_root_to_child > (mock_child.sh) child_stack_1 < (mock_child.sh) func child_stack_2(B[m
+🌝 [36mout: [mock_root.sh] test_tasks_chain_from_root_to_child > [mock_child.sh] child_stack_1 < [mock_child.sh] child_stack_2(B[m
 child_stack_1 end without err
-🏃🏻‍♀️ [34mout: (mock_root.sh) func test_tasks_chain_from_root_to_child < (mock_child.sh) child_stack_1(B[m
-👍 [34mdone: (mock_root.sh) func test_tasks_chain_from_root_to_child(B[m
+🌝 [36mout: [mock_root.sh] test_tasks_chain_from_root_to_child < [mock_child.sh] child_stack_1(B[m
+👍 [36mdone: [mock_root.sh] test_tasks_chain_from_root_to_child(B[m
 HEREDOC
 
   assert_mock_root_output_and_err test_tasks_chain_from_root_to_child_fails_in_child <<'HEREDOC'
-🏃‍♀️‍➡️ [36min: (mock_root.sh) func test_tasks_chain_from_root_to_child_fails_in_child(B[m
-🏃‍♀️‍➡️ [36min: (mock_root.sh) func test_tasks_chain_from_root_to_child_fails_in_child > (mock_child.sh) child_stack_1(B[m
+🚀 [34mdo: [mock_root.sh] test_tasks_chain_from_root_to_child_fails_in_child(B[m
+🌚 [34min: [mock_root.sh] test_tasks_chain_from_root_to_child_fails_in_child > [mock_child.sh] child_stack_1(B[m
 child_stack_1 start
 from test_tasks_chain_from_root_to_child_fails_in_child
-🏃‍♀️‍➡️ [36min: (mock_root.sh) func test_tasks_chain_from_root_to_child_fails_in_child > (mock_child.sh) child_stack_1 > (mock_child.sh) func child_stack_2(B[m
+🌚 [34min: [mock_root.sh] test_tasks_chain_from_root_to_child_fails_in_child > [mock_child.sh] child_stack_1 > [mock_child.sh] child_stack_2(B[m
 child_stack_2 start
 from child_stack_1
-💥 [31mat: (mock_root.sh) func test_tasks_chain_from_root_to_child_fails_in_child > (mock_child.sh) child_stack_1 > (mock_child.sh) func child_stack_2(B[m
+💥 [31mat: [mock_root.sh] test_tasks_chain_from_root_to_child_fails_in_child > [mock_child.sh] child_stack_1 < [mock_child.sh] child_stack_2(B[m
 💥 7 from command:
 💥 return "$1"
-💥 [31mat: (mock_root.sh) func test_tasks_chain_from_root_to_child_fails_in_child > (mock_child.sh) child_stack_1(B[m
+💥 [31mat: [mock_root.sh] test_tasks_chain_from_root_to_child_fails_in_child < [mock_child.sh] child_stack_1(B[m
 💥 7 from command:
 💥 child_stack_1 'from test_tasks_chain_from_root_to_child_fails_in_child'
-💥 [31mfailed: (mock_root.sh) func test_tasks_chain_from_root_to_child_fails_in_child(B[m
+💥 [31mfailed: [mock_root.sh] test_tasks_chain_from_root_to_child_fails_in_child(B[m
 💥 7 from command:
 💥 return "$code"
 HEREDOC
 
   assert_mock_root_output_and_err test_process_in_logic_expression <<'HEREDOC'
-🏃‍♀️‍➡️ [36min: (mock_root.sh) func test_process_in_logic_expression(B[m
+🚀 [34mdo: [mock_root.sh] test_process_in_logic_expression(B[m
 started test_process_in_logic_expression
-🏃‍♀️‍➡️ [36min: (mock_root.sh) func test_process_in_logic_expression > (mock_root.sh) func root_stack_2(B[m
+🌚 [34min: [mock_root.sh] test_process_in_logic_expression > [mock_root.sh] root_stack_2(B[m
 root_stack_2 start
 root_stack_2 end without err
-🏃🏻‍♀️ [34mout: (mock_root.sh) func test_process_in_logic_expression < (mock_root.sh) func root_stack_2(B[m
+🌝 [36mout: [mock_root.sh] test_process_in_logic_expression < [mock_root.sh] root_stack_2(B[m
 task root_stack_2 succeeded as expected. Because errexit is implicitly disabled (sadly)
-🏃‍♀️‍➡️ [36min: (mock_root.sh) func test_process_in_logic_expression > (mock_root.sh) root_stack_2(B[m
+🌚 [34min: [mock_root.sh] test_process_in_logic_expression > [mock_root.sh] (process) root_stack_2(B[m
 root_stack_2 start
-💥 [31mat: (mock_root.sh) func test_process_in_logic_expression > (mock_root.sh) root_stack_2(B[m
+💥 [31mat: [mock_root.sh] test_process_in_logic_expression < [mock_root.sh] (process) root_stack_2(B[m
 💥 89 from command:
 💥 root_stack_2
 process root_stack_2 failed as expected, new process does not inherit disabled errexit
 ended test_process_in_logic_expression without err
-👍 [34mdone: (mock_root.sh) func test_process_in_logic_expression(B[m
+👍 [36mdone: [mock_root.sh] test_process_in_logic_expression(B[m
 HEREDOC
 
 
   assert_mock_root_output_and_err test_tasks_chain_in_loaded_source <<'HEREDOC'
-🏃‍♀️‍➡️ [36min: (mock_root.sh) func test_tasks_chain_in_loaded_source(B[m
-🏃‍♀️‍➡️ [36min: (mock_root.sh) func test_tasks_chain_in_loaded_source > (mock_root.sh) func loaded_source_stack_1(B[m
+🚀 [34mdo: [mock_root.sh] test_tasks_chain_in_loaded_source(B[m
+🌚 [34min: [mock_root.sh] test_tasks_chain_in_loaded_source > [mock_root.sh] loaded_source_stack_1(B[m
 started loaded_source_stack_1
-🏃‍♀️‍➡️ [36min: (mock_root.sh) func test_tasks_chain_in_loaded_source > (mock_root.sh) func loaded_source_stack_1 > (mock_root.sh) func loaded_source_stack_2(B[m
+🌚 [34min: [mock_root.sh] test_tasks_chain_in_loaded_source > [mock_root.sh] loaded_source_stack_1 > [mock_root.sh] loaded_source_stack_2(B[m
 started loaded_source_stack_2
-🏃‍♀️‍➡️ [36min: (mock_root.sh) func test_tasks_chain_in_loaded_source > (mock_root.sh) func loaded_source_stack_1 > (mock_root.sh) func loaded_source_stack_2 > (mock_root.sh) func loaded_source_stack_3(B[m
+🌚 [34min: [mock_root.sh] test_tasks_chain_in_loaded_source > [mock_root.sh] loaded_source_stack_1 > [mock_root.sh] loaded_source_stack_2 > [mock_root.sh] loaded_source_stack_3(B[m
 started loaded_source_stack_3
 finished loaded_source_stack_3 as planned
-🏃🏻‍♀️ [34mout: (mock_root.sh) func test_tasks_chain_in_loaded_source > (mock_root.sh) func loaded_source_stack_1 > (mock_root.sh) func loaded_source_stack_2 < (mock_root.sh) func loaded_source_stack_3(B[m
+🌝 [36mout: [mock_root.sh] test_tasks_chain_in_loaded_source > [mock_root.sh] loaded_source_stack_1 > [mock_root.sh] loaded_source_stack_2 < [mock_root.sh] loaded_source_stack_3(B[m
 finished loaded_source_stack_2 as planned
-🏃🏻‍♀️ [34mout: (mock_root.sh) func test_tasks_chain_in_loaded_source > (mock_root.sh) func loaded_source_stack_1 < (mock_root.sh) func loaded_source_stack_2(B[m
+🌝 [36mout: [mock_root.sh] test_tasks_chain_in_loaded_source > [mock_root.sh] loaded_source_stack_1 < [mock_root.sh] loaded_source_stack_2(B[m
 finished loaded_source_stack_1 as planned
-🏃🏻‍♀️ [34mout: (mock_root.sh) func test_tasks_chain_in_loaded_source < (mock_root.sh) func loaded_source_stack_1(B[m
-👍 [34mdone: (mock_root.sh) func test_tasks_chain_in_loaded_source(B[m
+🌝 [36mout: [mock_root.sh] test_tasks_chain_in_loaded_source < [mock_root.sh] loaded_source_stack_1(B[m
+👍 [36mdone: [mock_root.sh] test_tasks_chain_in_loaded_source(B[m
 HEREDOC
 
   assert_mock_root_output_and_err test_tasks_chain_in_loaded_source_fails <<'HEREDOC'
-🏃‍♀️‍➡️ [36min: (mock_root.sh) func test_tasks_chain_in_loaded_source_fails(B[m
-🏃‍♀️‍➡️ [36min: (mock_root.sh) func test_tasks_chain_in_loaded_source_fails > (mock_root.sh) func loaded_source_stack_1(B[m
+🚀 [34mdo: [mock_root.sh] test_tasks_chain_in_loaded_source_fails(B[m
+🌚 [34min: [mock_root.sh] test_tasks_chain_in_loaded_source_fails > [mock_root.sh] loaded_source_stack_1(B[m
 started loaded_source_stack_1
-🏃‍♀️‍➡️ [36min: (mock_root.sh) func test_tasks_chain_in_loaded_source_fails > (mock_root.sh) func loaded_source_stack_1 > (mock_root.sh) func loaded_source_stack_2(B[m
+🌚 [34min: [mock_root.sh] test_tasks_chain_in_loaded_source_fails > [mock_root.sh] loaded_source_stack_1 > [mock_root.sh] loaded_source_stack_2(B[m
 started loaded_source_stack_2
-🏃‍♀️‍➡️ [36min: (mock_root.sh) func test_tasks_chain_in_loaded_source_fails > (mock_root.sh) func loaded_source_stack_1 > (mock_root.sh) func loaded_source_stack_2 > (mock_root.sh) func loaded_source_stack_3(B[m
+🌚 [34min: [mock_root.sh] test_tasks_chain_in_loaded_source_fails > [mock_root.sh] loaded_source_stack_1 > [mock_root.sh] loaded_source_stack_2 > [mock_root.sh] loaded_source_stack_3(B[m
 started loaded_source_stack_3
-💥 [31mat: (mock_root.sh) func test_tasks_chain_in_loaded_source_fails > (mock_root.sh) func loaded_source_stack_1 > (mock_root.sh) func loaded_source_stack_2 > (mock_root.sh) func loaded_source_stack_3(B[m
+💥 [31mat: [mock_root.sh] test_tasks_chain_in_loaded_source_fails > [mock_root.sh] loaded_source_stack_1 > [mock_root.sh] loaded_source_stack_2 < [mock_root.sh] loaded_source_stack_3(B[m
 💥 24 from command:
 💥 return "$1"
-💥 [31mat: (mock_root.sh) func test_tasks_chain_in_loaded_source_fails > (mock_root.sh) func loaded_source_stack_1 > (mock_root.sh) func loaded_source_stack_2(B[m
-💥 [31mat: (mock_root.sh) func test_tasks_chain_in_loaded_source_fails > (mock_root.sh) func loaded_source_stack_1(B[m
-💥 [31mfailed: (mock_root.sh) func test_tasks_chain_in_loaded_source_fails(B[m
+💥 [31mat: [mock_root.sh] test_tasks_chain_in_loaded_source_fails > [mock_root.sh] loaded_source_stack_1 < [mock_root.sh] loaded_source_stack_2(B[m
+💥 [31mat: [mock_root.sh] test_tasks_chain_in_loaded_source_fails < [mock_root.sh] loaded_source_stack_1(B[m
+💥 [31mfailed: [mock_root.sh] test_tasks_chain_in_loaded_source_fails(B[m
 HEREDOC
 
   assert_mock_root_output_and_err test_tasks_chain_in_child <<'HEREDOC'
-🏃‍♀️‍➡️ [36min: (mock_child.sh) test_tasks_chain_in_child(B[m
-🏃‍♀️‍➡️ [36min: (mock_child.sh) test_tasks_chain_in_child > (mock_child.sh) func child_stack_1(B[m
+🚀 [34mdo: [mock_child.sh] test_tasks_chain_in_child(B[m
+🌚 [34min: [mock_child.sh] test_tasks_chain_in_child > [mock_child.sh] child_stack_1(B[m
 child_stack_1 start
 from test_tasks_chain_in_child
-🏃‍♀️‍➡️ [36min: (mock_child.sh) test_tasks_chain_in_child > (mock_child.sh) func child_stack_1 > (mock_child.sh) func child_stack_2(B[m
+🌚 [34min: [mock_child.sh] test_tasks_chain_in_child > [mock_child.sh] child_stack_1 > [mock_child.sh] child_stack_2(B[m
 child_stack_2 start
 from child_stack_1
 child_stack_2 end without err
-🏃🏻‍♀️ [34mout: (mock_child.sh) test_tasks_chain_in_child > (mock_child.sh) func child_stack_1 < (mock_child.sh) func child_stack_2(B[m
+🌝 [36mout: [mock_child.sh] test_tasks_chain_in_child > [mock_child.sh] child_stack_1 < [mock_child.sh] child_stack_2(B[m
 child_stack_1 end without err
-🏃🏻‍♀️ [34mout: (mock_child.sh) test_tasks_chain_in_child < (mock_child.sh) func child_stack_1(B[m
-👍 [34mdone: (mock_child.sh) test_tasks_chain_in_child(B[m
+🌝 [36mout: [mock_child.sh] test_tasks_chain_in_child < [mock_child.sh] child_stack_1(B[m
+👍 [36mdone: [mock_child.sh] test_tasks_chain_in_child(B[m
 HEREDOC
 
   assert_mock_root_output_and_err test_tasks_chain_in_child_fails <<'HEREDOC'
-🏃‍♀️‍➡️ [36min: (mock_child.sh) test_tasks_chain_in_child_fails(B[m
-🏃‍♀️‍➡️ [36min: (mock_child.sh) test_tasks_chain_in_child_fails > (mock_child.sh) func child_stack_1(B[m
+🚀 [34mdo: [mock_child.sh] test_tasks_chain_in_child_fails(B[m
+🌚 [34min: [mock_child.sh] test_tasks_chain_in_child_fails > [mock_child.sh] child_stack_1(B[m
 child_stack_1 start
 from test_tasks_chain_in_child_fails
-🏃‍♀️‍➡️ [36min: (mock_child.sh) test_tasks_chain_in_child_fails > (mock_child.sh) func child_stack_1 > (mock_child.sh) func child_stack_2(B[m
+🌚 [34min: [mock_child.sh] test_tasks_chain_in_child_fails > [mock_child.sh] child_stack_1 > [mock_child.sh] child_stack_2(B[m
 child_stack_2 start
 from child_stack_1
-💥 [31mat: (mock_child.sh) test_tasks_chain_in_child_fails > (mock_child.sh) func child_stack_1 > (mock_child.sh) func child_stack_2(B[m
+💥 [31mat: [mock_child.sh] test_tasks_chain_in_child_fails > [mock_child.sh] child_stack_1 < [mock_child.sh] child_stack_2(B[m
 💥 7 from command:
 💥 return "$1"
-💥 [31mat: (mock_child.sh) test_tasks_chain_in_child_fails > (mock_child.sh) func child_stack_1(B[m
-💥 [31mfailed: (mock_child.sh) test_tasks_chain_in_child_fails(B[m
+💥 [31mat: [mock_child.sh] test_tasks_chain_in_child_fails < [mock_child.sh] child_stack_1(B[m
+💥 [31mfailed: [mock_child.sh] test_tasks_chain_in_child_fails(B[m
 💥 7 from command:
 💥 test_tasks_chain_in_child_fails
 HEREDOC
 
   assert_mock_root_output_and_err test_root_task_from_child_without_link_fails <<'HEREDOC'
-🏃‍♀️‍➡️ [36min: (mock_child.sh) test_root_task_from_child_without_link_fails(B[m
+🚀 [34mdo: [mock_child.sh] test_root_task_from_child_without_link_fails(B[m
 ❌ [31m🤔 No task named: 'root_stack_2' in this Xfile or linked children!(B[m
 Maybe misspelled?
 Try: x help
 Call args:
 root_stack_2
 from test_root_task_from_child_without_link_fails
-💥 [31mfailed: (mock_child.sh) test_root_task_from_child_without_link_fails(B[m
+💥 [31mfailed: [mock_child.sh] test_root_task_from_child_without_link_fails(B[m
 💥 8 from command:
 💥 test_root_task_from_child_without_link_fails
 HEREDOC
 
   assert_mock_root_output_and_err test_child_cannot_call_child_that_not_linked_directly <<'HEREDOC'
-🏃‍♀️‍➡️ [36min: (mock_child_two.sh) test_child_cannot_call_child_that_not_linked_directly(B[m
+🚀 [34mdo: [mock_child_two.sh] test_child_cannot_call_child_that_not_linked_directly(B[m
 ❌ [31m🤔 No task named: 'child_stack_1' in this Xfile or linked children!(B[m
 Maybe misspelled?
 Try: x help
 Call args:
 child_stack_1
 from test_child_cannot_call_child_that_not_linked_directly
-💥 [31mfailed: (mock_child_two.sh) test_child_cannot_call_child_that_not_linked_directly(B[m
+💥 [31mfailed: [mock_child_two.sh] test_child_cannot_call_child_that_not_linked_directly(B[m
 💥 8 from command:
 💥 test_child_cannot_call_child_that_not_linked_directly
 HEREDOC
 
   assert_mock_root_output_and_err test_root_task_from_child <<'HEREDOC'
-🏃‍♀️‍➡️ [36min: (mock_child_two.sh) test_root_task_from_child(B[m
-🏃‍♀️‍➡️ [36min: (mock_child_two.sh) test_root_task_from_child > (mock_root.sh) root_stack_2(B[m
+🚀 [34mdo: [mock_child_two.sh] test_root_task_from_child(B[m
+🌚 [34min: [mock_child_two.sh] test_root_task_from_child > [mock_root.sh] root_stack_2(B[m
 root_stack_2 start
 from test_root_task_from_child
 root_stack_2 end without err
-🏃🏻‍♀️ [34mout: (mock_child_two.sh) test_root_task_from_child < (mock_root.sh) root_stack_2(B[m
-👍 [34mdone: (mock_child_two.sh) test_root_task_from_child(B[m
+🌝 [36mout: [mock_child_two.sh] test_root_task_from_child < [mock_root.sh] root_stack_2(B[m
+👍 [36mdone: [mock_child_two.sh] test_root_task_from_child(B[m
 HEREDOC
 
   assert_mock_root_output_and_err test_failure_after_ignored_process_failure_logging <<'HEREDOC'
-🏃‍♀️‍➡️ [36min: (mock_root.sh) func test_failure_after_ignored_process_failure_logging(B[m
-🏃‍♀️‍➡️ [36min: (mock_root.sh) func test_failure_after_ignored_process_failure_logging > (mock_root.sh) return_code(B[m
-💥 [31mat: (mock_root.sh) func test_failure_after_ignored_process_failure_logging > (mock_root.sh) return_code(B[m
+🚀 [34mdo: [mock_root.sh] test_failure_after_ignored_process_failure_logging(B[m
+🌚 [34min: [mock_root.sh] test_failure_after_ignored_process_failure_logging > [mock_root.sh] (process) return_code(B[m
+💥 [31mat: [mock_root.sh] test_failure_after_ignored_process_failure_logging < [mock_root.sh] (process) return_code(B[m
 💥 88 from command:
 💥 return_code '88'
 la la la
-💥 [31mfailed: (mock_root.sh) func test_failure_after_ignored_process_failure_logging(B[m
+💥 [31mfailed: [mock_root.sh] test_failure_after_ignored_process_failure_logging(B[m
 💥 1 from command:
 💥 false
 HEREDOC
@@ -587,16 +587,16 @@ out 2 in test_forward_out_and_err_to_dir
 HEREDOC
 
   assert_mock_root_err test_forward_out_and_err_to_dir <<'HEREDOC'
-🏃‍♀️‍➡️ [36min: (mock_root.sh) func test_forward_out_and_err_to_dir(B[m
-💁‍♀️ [35mForwarding this shell (script/subshell) output and error streams(B[m
+🚀 [34mdo: [mock_root.sh] test_forward_out_and_err_to_dir(B[m
+💁 [35mForwarding this shell (script/subshell) output and error streams(B[m
 - to: ./output/xfile_tests/forward_out_and_err_to_dir/main
 - called inside of 'test_forward_out_and_err_to_dir'
 started test_forward_out_and_err_to_dir
 in test_forward_out_and_err_to_dir
-🏃‍♀️‍➡️ [36min: (mock_root.sh) func test_forward_out_and_err_to_dir > (mock_root.sh) func bar(B[m
+🌚 [34min: [mock_root.sh] test_forward_out_and_err_to_dir > [mock_root.sh] bar(B[m
 in bar
-🏃‍♀️‍➡️ [36min: (mock_root.sh) func test_forward_out_and_err_to_dir > (mock_root.sh) func bar > (mock_root.sh) func foo(B[m
-💁‍♀️ [35mForwarding this shell (script/subshell) output and error streams(B[m
+🌚 [34min: [mock_root.sh] test_forward_out_and_err_to_dir > [mock_root.sh] bar > [mock_root.sh] foo(B[m
+💁 [35mForwarding this shell (script/subshell) output and error streams(B[m
 - to: ./output/xfile_tests/forward_out_and_err_to_dir/foo
 - called inside of 'foo'
 ❗️ [33mRepetitive forwarding of output and error streams in the same shell (script/subshell) – 0.(B[m
@@ -607,12 +607,12 @@ tee -> tee -> >1 (process fd)
 Consider refactor to 'run_with_status_marker' or subshelling the task that must forward itself
 
 in foo
-🏃🏻‍♀️ [34mout: (mock_root.sh) func test_forward_out_and_err_to_dir > (mock_root.sh) func bar < (mock_root.sh) func foo(B[m
+🌝 [36mout: [mock_root.sh] test_forward_out_and_err_to_dir > [mock_root.sh] bar < [mock_root.sh] foo(B[m
 in bar after foo
-🏃🏻‍♀️ [34mout: (mock_root.sh) func test_forward_out_and_err_to_dir < (mock_root.sh) func bar(B[m
+🌝 [36mout: [mock_root.sh] test_forward_out_and_err_to_dir < [mock_root.sh] bar(B[m
 in test_forward_out_and_err_to_dir after bar
 ended test_forward_out_and_err_to_dir
-👍 [34mdone: (mock_root.sh) func test_forward_out_and_err_to_dir(B[m
+👍 [36mdone: [mock_root.sh] test_forward_out_and_err_to_dir(B[m
 HEREDOC
 
   assert_cmd_output_and_err cat "$GIT_ROOT/output/xfile_tests/forward_out_and_err_to_dir/main/out.log" <<'HEREDOC'
@@ -625,10 +625,10 @@ HEREDOC
   assert_cmd_output_and_err cat "$GIT_ROOT/output/xfile_tests/forward_out_and_err_to_dir/main/err.log" <<'HEREDOC'
 started test_forward_out_and_err_to_dir
 in test_forward_out_and_err_to_dir
-🏃‍♀️‍➡️ [36min: (mock_root.sh) func test_forward_out_and_err_to_dir > (mock_root.sh) func bar(B[m
+🌚 [34min: [mock_root.sh] test_forward_out_and_err_to_dir > [mock_root.sh] bar(B[m
 in bar
-🏃‍♀️‍➡️ [36min: (mock_root.sh) func test_forward_out_and_err_to_dir > (mock_root.sh) func bar > (mock_root.sh) func foo(B[m
-💁‍♀️ [35mForwarding this shell (script/subshell) output and error streams(B[m
+🌚 [34min: [mock_root.sh] test_forward_out_and_err_to_dir > [mock_root.sh] bar > [mock_root.sh] foo(B[m
+💁 [35mForwarding this shell (script/subshell) output and error streams(B[m
 - to: ./output/xfile_tests/forward_out_and_err_to_dir/foo
 - called inside of 'foo'
 ❗️ [33mRepetitive forwarding of output and error streams in the same shell (script/subshell) – 0.(B[m
@@ -639,12 +639,12 @@ tee -> tee -> >1 (process fd)
 Consider refactor to 'run_with_status_marker' or subshelling the task that must forward itself
 
 in foo
-🏃🏻‍♀️ [34mout: (mock_root.sh) func test_forward_out_and_err_to_dir > (mock_root.sh) func bar < (mock_root.sh) func foo(B[m
+🌝 [36mout: [mock_root.sh] test_forward_out_and_err_to_dir > [mock_root.sh] bar < [mock_root.sh] foo(B[m
 in bar after foo
-🏃🏻‍♀️ [34mout: (mock_root.sh) func test_forward_out_and_err_to_dir < (mock_root.sh) func bar(B[m
+🌝 [36mout: [mock_root.sh] test_forward_out_and_err_to_dir < [mock_root.sh] bar(B[m
 in test_forward_out_and_err_to_dir after bar
 ended test_forward_out_and_err_to_dir
-👍 [34mdone: (mock_root.sh) func test_forward_out_and_err_to_dir(B[m
+👍 [36mdone: [mock_root.sh] test_forward_out_and_err_to_dir(B[m
 HEREDOC
 
   assert_cmd_output_and_err cat "$GIT_ROOT/output/xfile_tests/forward_out_and_err_to_dir/foo/out.log" <<'HEREDOC'
@@ -655,12 +655,12 @@ HEREDOC
 
   assert_cmd_output_and_err cat "$GIT_ROOT/output/xfile_tests/forward_out_and_err_to_dir/foo/err.log" <<'HEREDOC'
 in foo
-🏃🏻‍♀️ [34mout: (mock_root.sh) func test_forward_out_and_err_to_dir > (mock_root.sh) func bar < (mock_root.sh) func foo(B[m
+🌝 [36mout: [mock_root.sh] test_forward_out_and_err_to_dir > [mock_root.sh] bar < [mock_root.sh] foo(B[m
 in bar after foo
-🏃🏻‍♀️ [34mout: (mock_root.sh) func test_forward_out_and_err_to_dir < (mock_root.sh) func bar(B[m
+🌝 [36mout: [mock_root.sh] test_forward_out_and_err_to_dir < [mock_root.sh] bar(B[m
 in test_forward_out_and_err_to_dir after bar
 ended test_forward_out_and_err_to_dir
-👍 [34mdone: (mock_root.sh) func test_forward_out_and_err_to_dir(B[m
+👍 [36mdone: [mock_root.sh] test_forward_out_and_err_to_dir(B[m
 HEREDOC
 
   if var_is_true has_problems; then return 3; fi
@@ -679,27 +679,27 @@ out 2 in test_forward_out_and_err_to_dir
 HEREDOC
 
   assert_mock_root_err test_run_with_status_marker <<'HEREDOC'
-🏃‍♀️‍➡️ [36min: (mock_root.sh) func test_run_with_status_marker(B[m
+🚀 [34mdo: [mock_root.sh] test_run_with_status_marker(B[m
 started test_forward_out_and_err_to_dir
 in test_forward_out_and_err_to_dir
-💁‍♀️ [35mForwarding output and error streams:(B[m
+💁 [35mForwarding output and error streams:(B[m
 - of: task bar
 - to: ./output/xfile_tests/test_run_with_status_marker/bar
-💁‍♀️ [35mWill create 'success' file in forwarding dir, unless command fails(B[m
-🏃‍♀️‍➡️ [36min: (mock_root.sh) func test_run_with_status_marker > (mock_root.sh) func bar(B[m
+💁 [35mWill create 'success' file in forwarding dir, unless command fails(B[m
+🌚 [34min: [mock_root.sh] test_run_with_status_marker > [mock_root.sh] bar(B[m
 in bar
-💁‍♀️ [35mForwarding output and error streams:(B[m
+💁 [35mForwarding output and error streams:(B[m
 - of: task foo
 - to: ./output/xfile_tests/test_run_with_status_marker/foo
-💁‍♀️ [35mWill create 'success' file in forwarding dir, unless command fails(B[m
-🏃‍♀️‍➡️ [36min: (mock_root.sh) func test_run_with_status_marker > (mock_root.sh) func bar > (mock_root.sh) func foo(B[m
+💁 [35mWill create 'success' file in forwarding dir, unless command fails(B[m
+🌚 [34min: [mock_root.sh] test_run_with_status_marker > [mock_root.sh] bar > [mock_root.sh] foo(B[m
 in foo
-🏃🏻‍♀️ [34mout: (mock_root.sh) func test_run_with_status_marker > (mock_root.sh) func bar < (mock_root.sh) func foo(B[m
+🌝 [36mout: [mock_root.sh] test_run_with_status_marker > [mock_root.sh] bar < [mock_root.sh] foo(B[m
 in bar after foo
-🏃🏻‍♀️ [34mout: (mock_root.sh) func test_run_with_status_marker < (mock_root.sh) func bar(B[m
+🌝 [36mout: [mock_root.sh] test_run_with_status_marker < [mock_root.sh] bar(B[m
 in test_forward_out_and_err_to_dir after bar
 ended test_forward_out_and_err_to_dir
-👍 [34mdone: (mock_root.sh) func test_run_with_status_marker(B[m
+👍 [36mdone: [mock_root.sh] test_run_with_status_marker(B[m
 HEREDOC
 
   assert_cmd_output_and_err cat "$GIT_ROOT/output/xfile_tests/test_run_with_status_marker/bar/out.log" <<'HEREDOC'
@@ -708,17 +708,17 @@ out in bar
 HEREDOC
 
   assert_cmd_output_and_err cat "$GIT_ROOT/output/xfile_tests/test_run_with_status_marker/bar/err.log" <<'HEREDOC'
-🏃‍♀️‍➡️ [36min: (mock_root.sh) func test_run_with_status_marker > (mock_root.sh) func bar(B[m
+🌚 [34min: [mock_root.sh] test_run_with_status_marker > [mock_root.sh] bar(B[m
 in bar
-💁‍♀️ [35mForwarding output and error streams:(B[m
+💁 [35mForwarding output and error streams:(B[m
 - of: task foo
 - to: ./output/xfile_tests/test_run_with_status_marker/foo
-💁‍♀️ [35mWill create 'success' file in forwarding dir, unless command fails(B[m
-🏃‍♀️‍➡️ [36min: (mock_root.sh) func test_run_with_status_marker > (mock_root.sh) func bar > (mock_root.sh) func foo(B[m
+💁 [35mWill create 'success' file in forwarding dir, unless command fails(B[m
+🌚 [34min: [mock_root.sh] test_run_with_status_marker > [mock_root.sh] bar > [mock_root.sh] foo(B[m
 in foo
-🏃🏻‍♀️ [34mout: (mock_root.sh) func test_run_with_status_marker > (mock_root.sh) func bar < (mock_root.sh) func foo(B[m
+🌝 [36mout: [mock_root.sh] test_run_with_status_marker > [mock_root.sh] bar < [mock_root.sh] foo(B[m
 in bar after foo
-🏃🏻‍♀️ [34mout: (mock_root.sh) func test_run_with_status_marker < (mock_root.sh) func bar(B[m
+🌝 [36mout: [mock_root.sh] test_run_with_status_marker < [mock_root.sh] bar(B[m
 HEREDOC
 
   assert_cmd_output_and_err cat "$GIT_ROOT/output/xfile_tests/test_run_with_status_marker/foo/out.log" <<'HEREDOC'
@@ -726,9 +726,9 @@ out in foo
 HEREDOC
 
   assert_cmd_output_and_err cat "$GIT_ROOT/output/xfile_tests/test_run_with_status_marker/foo/err.log" <<'HEREDOC'
-🏃‍♀️‍➡️ [36min: (mock_root.sh) func test_run_with_status_marker > (mock_root.sh) func bar > (mock_root.sh) func foo(B[m
+🌚 [34min: [mock_root.sh] test_run_with_status_marker > [mock_root.sh] bar > [mock_root.sh] foo(B[m
 in foo
-🏃🏻‍♀️ [34mout: (mock_root.sh) func test_run_with_status_marker > (mock_root.sh) func bar < (mock_root.sh) func foo(B[m
+🌝 [36mout: [mock_root.sh] test_run_with_status_marker > [mock_root.sh] bar < [mock_root.sh] foo(B[m
 HEREDOC
 
   if var_is_true has_problems; then return 3; fi

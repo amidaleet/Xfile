@@ -31,8 +31,8 @@ function log_info() { ## print call args to stderr, with color and 👀 emoji
   print_with_emoji_and_color_header '👀' 6 "$@" 1>&2
 }
 
-function log_note() { ## print call args to stderr, with color and 💁‍♀️ emoji
-  print_with_emoji_and_color_header '💁‍♀️' 5 "$@" 1>&2
+function log_note() { ## print call args to stderr, with color and 💁 emoji
+  print_with_emoji_and_color_header '💁' 5 "$@" 1>&2
 }
 
 function log_warn() { ## print call args to stderr, with color and ❗️ emoji
@@ -102,15 +102,10 @@ function str_to_arr() { ## split string $1 to array named $2, using $3 as elemen
   local _ifs="${3:-' '}"
 
   if [ "$_ifs" = '\n' ]; then
-    local line
-    eval "$2=()"
-    while IFS=$'\n' read -r line; do
-      if [ -z "$line" ]; then continue; fi
-      eval "$2+=( \"\$line\" )"
-    done <<< "$1"
+    IFS=$'\n' read -r -d '' -a "$2" <<< "$1"
   else
     local tmp el
-    IFS="$_ifs" read -r -a tmp <<<"$1"
+    IFS=$_ifs read -r -a tmp <<< "$1"
     eval "$2=()"
     for el in "${tmp[@]}"; do
       if [ -z "$el" ]; then continue; fi

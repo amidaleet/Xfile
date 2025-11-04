@@ -142,7 +142,7 @@ function begin_xfile_task { ## Xfile task starting point, should be called after
       "${_SCRIPT_ARGS_ARR[@]}"
       return $?
     fi
-    _log_move_to_task "$task_name" func
+    _log_move_to_task "$task_name"
     (( ++_X_TASK_STACK_LENGTH_IN_SUBSHELL ))
     trap '_task_exit_trap $? "$BASH_COMMAND"' EXIT
     "${_SCRIPT_ARGS_ARR[@]}"
@@ -163,12 +163,13 @@ function task { ## Call declared function, use "$@" as _SCRIPT_ARGS_ARR inside
     if [ "$_X_TASK_STACK_BASH_SUBSHELL" != "$BASH_SUBSHELL" ]; then
       # task call inside new subshell shall log only subshell tasks stack part
       log_warn "Detected task call from subshell – $BASH_SUBSHELL." \
-        "'task' called inside of '${FUNCNAME[1]}'" \
-        ''
+        "'task' called inside of '${FUNCNAME[1]}'"
       _X_TASK_STACK_LENGTH_IN_SUBSHELL=0
       _X_TASK_STACK_BASH_SUBSHELL=$BASH_SUBSHELL
+      _log_move_to_task "$task_name" '(subshell)'
+    else
+      _log_move_to_task "$task_name"
     fi
-    _log_move_to_task "$task_name" func
     (( ++_X_TASK_STACK_LENGTH_IN_SUBSHELL ))
     trap '_task_exit_trap $? "$BASH_COMMAND"' EXIT
     "$@"
@@ -204,7 +205,7 @@ function process { ## run task (as new bash process) passing call args
   local _SCRIPT_ARGS_ARR=("$@") task_name=$1 child_idx
 
   if task_declared "$task_name" 2>/dev/null; then
-    _log_move_to_task "$task_name"
+    _log_move_to_task "$task_name" '(process)'
     local _X_FAILED_COMMAND
     _cache_failed_command_for_logging "$@"
     local code=0
@@ -266,13 +267,13 @@ _log_move_to_task() { ## Private API. Handles CALL STACK
   if [ -n "$2" ]; then
     new_part="$2 $new_part"
   fi
-  new_part="(${THIS_XFILE_PATH##*/}) $new_part"
+  new_part="[${THIS_XFILE_PATH##*/}] $new_part"
 
   if [ -z "$_X_TASK_STACK_STR" ]; then
-    printf "🏃‍♀️‍➡️ $(tput setaf 6)in: %s$(tput sgr0)\n" "$new_part" 1>&2
+    printf "🚀 $(tput setaf 4)do: %s$(tput sgr0)\n" "$new_part" 1>&2
     _X_TASK_STACK_STR=$new_part
   else
-    printf "🏃‍♀️‍➡️ $(tput setaf 6)in: %s > %s$(tput sgr0)\n" "$_X_TASK_STACK_STR" "$new_part" 1>&2
+    printf "🌚 $(tput setaf 4)in: %s > %s$(tput sgr0)\n" "$_X_TASK_STACK_STR" "$new_part" 1>&2
     _X_TASK_STACK_STR="$_X_TASK_STACK_STR > $new_part"
   fi
 
@@ -287,13 +288,13 @@ _log_move_from_task() { ## Private API. Handles CALL STACK
     just_finished_task=${_X_TASK_STACK_STR##*' > '}
     _X_TASK_STACK_STR=${_X_TASK_STACK_STR%' > '*}
     if [ "$code" != 0 ]; then
-      printf "💥 $(tput setaf 1)at: %s > %s$(tput sgr0)\n" "$_X_TASK_STACK_STR" "$just_finished_task" 1>&2
+      printf "💥 $(tput setaf 1)at: %s < %s$(tput sgr0)\n" "$_X_TASK_STACK_STR" "$just_finished_task" 1>&2
       if [ -n "$failed_command" ]; then
         log "💥 $code from command:" \
           "💥 $failed_command"
       fi
     else
-      printf "🏃🏻‍♀️ $(tput setaf 4)out: %s < %s$(tput sgr0)\n" "$_X_TASK_STACK_STR" "$just_finished_task" 1>&2
+      printf "🌝 $(tput setaf 6)out: %s < %s$(tput sgr0)\n" "$_X_TASK_STACK_STR" "$just_finished_task" 1>&2
     fi
   else
     if [ "$code" != 0 ]; then
@@ -303,7 +304,7 @@ _log_move_from_task() { ## Private API. Handles CALL STACK
           "💥 $failed_command"
       fi
     else
-      printf "👍 $(tput setaf 4)done: %s$(tput sgr0)\n" "$_X_TASK_STACK_STR" 1>&2
+      printf "👍 $(tput setaf 6)done: %s$(tput sgr0)\n" "$_X_TASK_STACK_STR" 1>&2
     fi
     _X_TASK_STACK_STR=''
   fi
