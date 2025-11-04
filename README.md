@@ -2,8 +2,6 @@
 
 Simple `bash` template for scripting.
 
-Aimed to replace widespread `Makefile` misuse as a repo commands launcher.
-
 ![logo](assets/logo.png)
 
 - [Xfile](#xfile)
@@ -20,10 +18,11 @@ Aimed to replace widespread `Makefile` misuse as a repo commands launcher.
     - [Xfile structure](#xfile-structure)
     - [Task](#task-1)
     - [Task visibility](#task-visibility)
-    - [Child task](#child-task)
     - [Arguments](#arguments-1)
     - [ENV](#env)
-    - [Credentials](#credentials)
+      - [Credentials](#credentials)
+    - [Load tasks from source](#load-tasks-from-source)
+    - [Link children](#link-children)
   - [Motivation](#motivation)
     - [About Makefile](#about-makefile)
     - [About Xfile](#about-xfile)
@@ -33,11 +32,11 @@ Aimed to replace widespread `Makefile` misuse as a repo commands launcher.
 ## Repo content
 
 Whole Xfile implementation in a single `./Xfile_source` folder:
-  - impl.sh – core functions
-  - xlib.sh – helpers
+  - impl.sh – Xfile core functions
+  - xlib.sh – helpers, may be used in any bash script
   - completion.sh – alias and autocomplete for interactive shell setup
-  - template.sh – sample Xfile with minimum code
-  - tests/tests.sh – tasks for impl/xlib testing
+  - template.sh – sample Xfile with minimum code for quick start from scratch
+  - tests/tests.sh – tasks for `impl.sh` and `xlib.sh` testing
 
 Sample code:
   - Xfile – task declaration examples
@@ -52,14 +51,14 @@ Sample code:
 
 For fresh start in your repository run script:
 ```sh
-(export XFILE_REF='main'; bash <<<$(curl -fsSL "https://raw.githubusercontent.com/amidaleet/Xfile/$XFILE_REF/Xfile_source/setup.sh"))
+(export XFILE_REF='main'; bash <<<$(curl -fsSL "https://raw.githubusercontent.com/amidaleet/Xfile/${XFILE_REF}/Xfile_source/setup.sh"))
 ```
 
 Or you can clone this **this** repository and call command from it's root dir.
 ```sh
 git clone git@github.com:amidaleet/Xfile.git ./Xfile # clone repo
 cd Xfile # move to this repo root
-./Xfile xfile_init_copy "$HOME/Developer/my-repository" # create plain Xfile and copy impl files to provided directory
+./Xfile xfile_init_copy "$HOME/Developer/my-repository" # create Xfile from template and copy Xfile_source to provided directory
 ```
 
 ### Interactive shell (alias and autocomplete)
@@ -68,12 +67,24 @@ Xfile provides interactive terminal features: short alias and autocompletion.
 
 Autocompletion shows declared args of the task as you type space after it's name or other args.
 
-![completion screen](assets/completion.png)
+Completion is tested in `Terminal.app` and `iTerm.app` with `bash`, `zsh` and `Oh-My-Zsh`.
 
+Completion suggests task names:
 
-Install it to `~/.zshrc` with command:
+![completion for tasks](assets/completion_tasks.png)
+
+And task arguments:
+
+![completion for task arguments](assets/completion_args.png)
+
+Install completion script to `HOME` with command:
 ```sh
-./Xfile install_xfile && exec zsh -l
+./Xfile install_xfile
+```
+
+Then source in `.zshrc` or `.bashrc`/`.bash_profile` like:
+```sh
+source "$HOME/.xfile_completion"
 ```
 
 After that Xfile commands can be called from directory with Xfile.
@@ -89,7 +100,7 @@ x unit_tests; x snapshot_tests; x collect_test_reports
 
 Not setup needed!
 
-For example in CI pipeline it can be called as bash script file, without alias.
+For example in CI pipeline it can be called as executable file by path, without alias.
 ```sh
 ./Xfile run_my_task
 ```
@@ -161,11 +172,11 @@ x cocoapods install
 
 Makefile-styled documentation for declared tasks is built-in.
 
-'help' is the default task:
+'help' is the default task, all of above calls launch 'help' task.
 ```sh
 x help
-
-# or simply:
+x -h
+x --help
 x
 ```
 
@@ -316,34 +327,6 @@ _copy_commit_msg() {}
 private:copy_commit_msg() {}
 ```
 
-### Child task
-
-Instead of sourcing all the Xfiles as plugins in your main Xfile, it may be convenient to define wrapper task functions and invoke child_task on demand.
-
-- Thats prevents scope pollution and sourcing overhead.
-- Also task names collision is not a problem with this method.
-
-Children Xfiles can be "linked", meaning their tasks will be visible in help and can be called with this Xfile.
-
-```sh
-# Link in ./Xfile:
-link_child_xfile "$GIT_ROOT/Xfile_source/tests.sh"
-```
-
-With link tasks from children can be invoked from Terminal.
-
-```sh
-./Xfile test_xfile # task from "$GIT_ROOT/Xfile_source/tests.sh" file
-```
-
-Or in a Xfile task's code.
-
-```sh
-function my_task() {
-  task test_xfile
-}
-```
-
 ### Arguments
 
 Each task can look up for expected arguments in the input line.
@@ -453,7 +436,7 @@ function rubocop {
 }
 ```
 
-### Credentials
+#### Credentials
 
 It is better not to use arguments for token or password passage. As strings will stay unprotected in Terminal session history.
 
@@ -479,11 +462,61 @@ function install_system_software {
 }
 ```
 
+### Load tasks from source
+
+Task functions can be declared in a separete file and inlined in runtime inside the main Xfile body via 'source' command.
+
+Hovewer it is better to use 'load_source' helper, in order to gain Xfile built-in 'help'-related Xfile logic for free.
+
+```sh
+# in ./Xfile
+
+load_source "$SCRIPTS_FOLDER/git_x.sh"
+load_source "$SCRIPTS_FOLDER/ruby_x.sh"
+load_optional_source "$GIT_ROOT/usr/xprofile" # may not exist, developer's local tasks and ENV
+```
+
+### Link children
+
+Instead of sourcing all the Xfiles as parts in your main Xfile, it may be convinient to incapsulate complex logic in separate Xfile – child.
+
+Thats prevents scope pollution – child may declare "local" helper functions with short names without worries about re-declaration.
+
+Hovewer be aware of next performance concirn: task call has O(N) dispatch complexity (N - linked childred count) and results a new process spawn, which is far more costly than simple local task call (which is function call, O(1) dispatch complexity).
+
+Child can be 'linked' with:
+
+```sh
+# in ./Xfile
+
+link_child_xfile "$GIT_ROOT/Xfile_source/tests.sh"
+```
+
+'Linked' tasks from children can be invoked from linked Xfile (like other tasks that declared inside Xfile).
+
+```sh
+./Xfile test_xfile # task from "$GIT_ROOT/Xfile_source/tests.sh" file
+```
+
+Or in a Xfile task's code.
+
+```sh
+# in ./Xfile
+
+function my_task() {
+  task test_xfile
+}
+```
+
 ## Motivation
+
+Xfile initial goal was to replace `Makefile` as a repo scripts launcher (which is a misuse of Makefile).
 
 ### About Makefile
 
-Makefile is a tool for build automation, typically used for C code compilation. It has it's own syntax and interpreter. It's ability to run bash commands in `.PHONY` targets without making/modifying files is actually a side effect.
+Makefile is a tool for build automation, typically used for C code compilation. It has it's own syntax and interpreter.
+
+It's ability to run shell commands in `.PHONY` targets without making/modifying files is actually a side effect.
 
 Also Makefile is widely used as a bucket for shell commands aliases in git repositories, an entry point for committed scripts. Especially in iOS development bubble.
 
@@ -502,13 +535,18 @@ Why run `bash (terminal) -> Makefile -> bash (script).`, if `bash.` possible?
 
 Makefile use case described above can be implemented with pure bash script.
 
-Xfile goals and benefits:
-- make it easy to run shell scripts from the active directory
-- simple template for sharing reusable commands, scripts and environment setup
-- support parameters passing in various form including flags and optional args (*both make- and getopts- like style*)
-- build-in help documentation and args completion in Terminal
-- make structural programming bash syntax available in task declaration scope itself
-- does not adds any new abstraction layer between commands and scripts
+Xfile aimed to be a:
+- solid foundation for API stability, due to:
+  - sigle ENV setup point for all repository scripts
+  - sigle CLI API facade for all repository scripts
+  - does not adds any new abstraction layer between shell command and scripts
+- SDK for fast bash script debug and development, providing build-in features like:
+  - argument readers in various forms (including flags and optional args)
+  - help and documentation features
+  - task names and args completion for Terminal.app
+  - logs of task stack
+  - logs of exit code and failed command
+  - faster execution of complex tasks (cause 'task' is typically just a function call, not a costly new process spawn)
 
 ## Naming
 
