@@ -127,6 +127,13 @@ root_stack_2() {
   log "root_stack_2 end without err"
 }
 
+function test_tasks_in_subshell_warnings {
+  (
+    task root_stack_1
+    task return_code 0
+  )
+}
+
 return_code() {
   return "$1"
 }

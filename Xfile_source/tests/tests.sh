@@ -7,6 +7,9 @@ source "$GIT_ROOT/Xfile_source/impl.sh"
 function test_xfile() { ## Test Xfile implementation (arguments handling)
   local fails_log
   fails_log=$(
+    set +e # do not fail fast
+    ((++_X_TASK_STACK_BASH_SUBSHELL)) # hide subshell warnings
+
     task test_var_is_true
     task test_assert_defined
     task test_args_parsing -l VERSION="42  20" --word 'word' -f -t "Text with  3   words and spaces" BETA_NUMBER='beta'
@@ -566,6 +569,26 @@ la la la
 💥 [31mfailed: test_failure_after_ignored_process_failure_logging [mock_root.sh](B[m
 💥 1 from command:
 💥 false
+HEREDOC
+
+  assert_mock_root_output_and_err test_tasks_in_subshell_warnings <<'HEREDOC'
+🚀 [34mdo: test_tasks_in_subshell_warnings [mock_root.sh](B[m
+❗️ [33mDetected task call from subshell – 1.(B[m
+'task' called inside of 'test_tasks_in_subshell_warnings'
+🌚 [34min: test_tasks_in_subshell_warnings [mock_root.sh] > root_stack_1 (subshell) [mock_root.sh](B[m
+root_stack_1 start
+🌚 [34min: test_tasks_in_subshell_warnings [mock_root.sh] > root_stack_1 (subshell) [mock_root.sh] > root_stack_2 [mock_root.sh](B[m
+root_stack_2 start
+from root_stack_1
+root_stack_2 end without err
+🌝 [36mout: test_tasks_in_subshell_warnings [mock_root.sh] > root_stack_1 (subshell) [mock_root.sh] < root_stack_2 [mock_root.sh](B[m
+root_stack_1 end without err
+🌝 [36mout: test_tasks_in_subshell_warnings [mock_root.sh] < root_stack_1 (subshell) [mock_root.sh](B[m
+❗️ [33mDetected task call from subshell – 1.(B[m
+'task' called inside of 'test_tasks_in_subshell_warnings'
+🌚 [34min: test_tasks_in_subshell_warnings [mock_root.sh] > return_code (subshell) [mock_root.sh](B[m
+🌝 [36mout: test_tasks_in_subshell_warnings [mock_root.sh] < return_code (subshell) [mock_root.sh](B[m
+👍 [36mdone: test_tasks_in_subshell_warnings [mock_root.sh](B[m
 HEREDOC
 
   if var_is_true has_problems; then return 3; fi
