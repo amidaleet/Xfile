@@ -157,7 +157,7 @@ function begin_xfile_task { ## Xfile task starting point, should be called after
 }
 
 function task { ## Call declared function, use "$@" as _SCRIPT_ARGS_ARR inside
-  local _SCRIPT_ARGS_ARR=("$@") task_name=$1 child_idx
+  local _SCRIPT_ARGS_ARR=("$@") task_name=$1 child_idx old_X_TASK_STACK_BASH_SUBSHELL
 
   if task_declared "$task_name" 2>/dev/null; then
     if [ "$_X_TASK_STACK_BASH_SUBSHELL" != "$BASH_SUBSHELL" ]; then
@@ -165,6 +165,7 @@ function task { ## Call declared function, use "$@" as _SCRIPT_ARGS_ARR inside
       log_warn "Detected task call from subshell – $BASH_SUBSHELL." \
         "'task' called inside of '${FUNCNAME[1]}'"
       _X_TASK_STACK_LENGTH_IN_SUBSHELL=0
+      old_X_TASK_STACK_BASH_SUBSHELL=$_X_TASK_STACK_BASH_SUBSHELL
       _X_TASK_STACK_BASH_SUBSHELL=$BASH_SUBSHELL
       _log_move_to_task "$task_name" '(subshell)'
     else
@@ -173,6 +174,9 @@ function task { ## Call declared function, use "$@" as _SCRIPT_ARGS_ARR inside
     (( ++_X_TASK_STACK_LENGTH_IN_SUBSHELL ))
     trap '_task_exit_trap $? "$BASH_COMMAND"' EXIT
     "$@"
+    if [ -n "$old_X_TASK_STACK_BASH_SUBSHELL" ]; then
+      _X_TASK_STACK_BASH_SUBSHELL=$old_X_TASK_STACK_BASH_SUBSHELL
+    fi
     (( _X_TASK_STACK_LENGTH_IN_SUBSHELL-- ))
     _log_move_from_task $?
   elif child_idx=$(try_find_child_with_task "$task_name"); then
