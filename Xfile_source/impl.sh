@@ -265,9 +265,9 @@ _log_move_to_task() { ## Private API. Handles CALL STACK
   local new_part=$1
 
   if [ -n "$2" ]; then
-    new_part="$2 $new_part"
+    new_part="$new_part $2"
   fi
-  new_part="[${THIS_XFILE_PATH##*/}] $new_part"
+  new_part="$new_part [${THIS_XFILE_PATH##*/}]"
 
   if [ -z "$_X_TASK_STACK_STR" ]; then
     printf "🚀 $(tput setaf 4)do: %s$(tput sgr0)\n" "$new_part" 1>&2
