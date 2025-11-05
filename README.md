@@ -1,10 +1,13 @@
 # Xfile
 
-Simple `bash` template for scripting.
+Simple `bash` template for efficient scripting.
 
 ![logo](assets/logo.png)
 
 - [Xfile](#xfile)
+  - [Motivation](#motivation)
+    - [Naming](#naming)
+    - [Links](#links)
   - [Repo content](#repo-content)
   - [Install Xfile](#install-xfile)
     - [Xfile template](#xfile-template)
@@ -16,25 +19,58 @@ Simple `bash` template for scripting.
     - [Help](#help)
   - [Write Xfile](#write-xfile)
     - [Xfile structure](#xfile-structure)
-    - [Task](#task-1)
-    - [Task visibility](#task-visibility)
-    - [Arguments](#arguments-1)
-    - [ENV](#env)
+    - [Declare task](#declare-task)
+    - [Read arguments](#read-arguments)
+    - [Use ENV](#use-env)
       - [Credentials](#credentials)
-    - [Load tasks from source](#load-tasks-from-source)
-    - [Link children](#link-children)
-  - [Motivation](#motivation)
-    - [About Makefile](#about-makefile)
-    - [About Xfile](#about-xfile)
-  - [Naming](#naming)
-  - [Links](#links)
+    - [Task visibility](#task-visibility)
+      - [Load tasks from source](#load-tasks-from-source)
+      - [Link children](#link-children)
+
+## Motivation
+
+Xfile aimed to be:
+- solid foundation for repository tools API stability:
+  - ENV setup point for all repository scripts
+  - CLI API facade for all repository scripts
+- SDK for bash scripting, with built-in features:
+  - argument readers in various forms (including flags and optional args)
+  - help and documentation features
+  - task names and args completion for Terminal.app
+  - logs of task stack
+  - logs of exit code and failed command
+  - fast execution of tasks inside the other task (cause 'task' call typically resolved as function call inside same shell process)
+
+Xfile original goal was to replace `Makefile` as a repo scripts launcher (which is a misuse of Makefile).
+
+- Makefile is a tool for build automation, specifically for C code compilation.
+- Makefile ability to run shell commands in `.PHONY` targets without making/modifying files is actually a side job.
+- Makefile is not a shell script – it has it's own syntax and interpreter.
+- Bash power of structural programming (loops, conditions, vars, arrays, etc.) is not available in Makefile.
+
+Makefile should never be used as a bucket for shell commands in git repositories!
+
+Why run `bash [Terminal] -> Makefile -> bash [script].`, if just `bash.` possible?
+
+### Naming
+
+"x" stands for eXecute. It is shortest meaningful alias for command.
+
+Also name distinguishes Xfile from existing Taskfile (YAML config tool).
+
+### Links
+
+More context:
+- [Stop Using Makefile](https://dev.to/calvinmclean/stop-using-makefile-use-taskfile-instead-4hm9) – why Makefile is bad practice
+- [Taskfile (bash)](https://github.com/adriancooney/Taskfile) – source of inspiration, blank bash snippet for storing multiple tasks in one script
+- [Shell History](https://martinheinz.dev/blog/110)
 
 ## Repo content
 
-Whole Xfile implementation in a single `./Xfile_source` folder:
+Whole required Xfile implementation located in a `./Xfile_source`:
   - impl.sh – Xfile core functions
   - xlib.sh – helpers, may be used in any bash script
-  - completion.sh – alias and autocomplete for interactive shell setup
+  - completion.sh – alias and autocomplete for interactive shell setup (for `.*rc` files)
   - template.sh – sample Xfile with minimum code for quick start from scratch
   - tests/tests.sh – tasks for `impl.sh` and `xlib.sh` testing
 
@@ -98,9 +134,9 @@ x unit_tests; x snapshot_tests; x collect_test_reports
 
 ### Non-interactive shell
 
-Not setup needed!
+No setup is required!
 
-For example in CI pipeline it can be called as executable file by path, without alias.
+For example, in CI pipeline Xfile can be called as executable file by path, without alias:
 ```sh
 ./Xfile run_my_task
 ```
@@ -134,7 +170,7 @@ x install_ios_runtime VERSION=17.2 COOKIE='cm123...'
 x sync_branches --from origin --to new_store --branches "main release/1.2.0 release/1.0.0"
 ```
 
-Multiple spaces in quated value is supported with parser.
+Multiple spaces in quoted value is supported with parser.
 
 ```sh
 # Short name
@@ -161,7 +197,7 @@ x install_homebrew_deps --infra
 x ff main --force
 ```
 
-Function may work as helper wrapper downstreaming all passed arguments.
+Function may work as helper wrapper that downstream all passed arguments.
 
 Change directory, apply config, set venv etc.
 ```sh
@@ -190,7 +226,13 @@ I briefly explain Xfile work logic by examples. For more info about bash feature
 
 `Xfile` stores multiple scripts as a function list.
 
-Each function can be executed as a `task` in it's own bash process.
+Each function can be executed as:
+- `task` – meaning simple call of specified function
+- `process` – new bash process that will call specified function
+
+`process` may be required if your put your function call inside a logical evaluation and want to presist `errexit` behaviour inside called function body.
+
+`Xfile` is designed to work with `errexit` option (`set -e`).
 
 Sample template with commentary:
 ```sh
@@ -214,6 +256,7 @@ function any_task_you_want_to_add { ## 👀 One line note about task meaning
   log_warn Warning
   log_error Error!
   log_success Success!
+  local WILDCARD ARG1 ARG2 # 👀 you typically want to limit variables visibility only to this func (and upper call stack part)
   read_opt -w --wildcard WILDCARD
   read_args ARG1 ARG2
   assert_defined ARG1 ARG2
@@ -224,18 +267,23 @@ function any_task_you_want_to_add { ## 👀 One line note about task meaning
 begin_xfile_task # 👀 Starts input handling, calls task specified in script args
 ```
 
-### Task
+### Declare task
 
-`task` launches `Xfile` function as a bash sub-process.
+`task` – `Xfile` function (or func from "child" script).
 
-Xfile logs when script jumps in and out between tasks.
+Xfile logs when script jumps in and out between tasks:
 
 ![task chain screen](assets/task_chain.png)
+
+If error exit occurs, code and throwing command are automatically displayed:
+
+![task chain screen](assets/error.png)
 
 Command arguments passed to the parent task call is not visible in children scopes.
 
 ```sh
 function run_ci_pipe {
+  local val
   read_args val
   echo "val=$val" # 👀 value from terminal command, ex: 'x run_ci_pipe val=123' -> '123'
 
@@ -247,16 +295,19 @@ function run_ci_pipe {
 }
 
 function load_3rd_parties {
+  local val
   read_args val
   echo "val=$val" # 👀 '', value is not provided in task call
 }
 
 function build {
+  local val
   read_args val
   echo "val=$val" # 👀 'build'
 }
 
 function test {
+  local val
   read_args val
   echo "val=$val" # 👀 'test'
 }
@@ -270,64 +321,13 @@ function run_ci_pipe {
 }
 
 function build {
+  local val
   read_args val # 👀 Searches in the process input, not in the function's one
   echo "$val" # 👀 '' or 'smth' (if process started with arg that have same name, ex: 'x run_ci_pipe val=smth')
 }
 ```
 
-### Task visibility
-
-All functions you declare directly in Xfile or in a script imported with `source` command (like `impl` and `xlib`) will be available in the script scope.
-
-You can execute it from command line.
-
-```sh
-x log "Some words" # task defined in Xfile_source/xlib
-x task_args my_function # task defined in Xfile_source/impl
-```
-
-You can `source` additional scripts with tasks definition.
-
-And redefine your `Xfile` `help` function to get plugin tasks listed in `help` output.
-
-It may be useful to allow place user defined extension file with ENV and tasks in your repo (added to `.gitignore`), like:
-
-```sh
-if [ -f usr/xprofile ]; then source usr/xprofile; fi
-
-function help { ## Print tasks description
-  show_tasks_from "$0" "💪 Common Xfile tasks:"
-  log
-  show_tasks_from usr/xprofile "👤 Personal xprofile tasks:"
-  log
-  usage
-}
-```
-
-If you want to define utility function that not meant to be called as task, you can define it without function keyword:
-
-```sh
-copy_commit_msg() {
-  git show -s --format='%B' | pbcopy
-}
-```
-
-It won't be listed in the `help` output.
-
-However it will be present in scope and still can be called via `x`.
-
-```sh
-x copy_commit_msg ## works as task
-```
-
-To minimize the risk of unwanted calls, use naming:
-
-```sh
-_copy_commit_msg() {}
-private:copy_commit_msg() {}
-```
-
-### Arguments
+### Read arguments
 
 Each task can look up for expected arguments in the input line.
 
@@ -339,8 +339,8 @@ Simple function may use bash built-in positional args:
 function rebase {
   local BRANCH=${1-main} # 👀 like nil-coalescing operator, main is default value
 
-  git fetch origin $BRANCH
-  git rebase -i origin/$BRANCH
+  git fetch origin "$BRANCH"
+  git rebase -i "origin/$BRANCH"
 }
 ```
 
@@ -354,6 +354,7 @@ x rebase
 Args can be Makefile-styled (name + equal sign + value string).
 ```sh
 function install_ios_runtime {
+  local VERSION COOKIE
   read_args VERSION COOKIE # 👀 Search make-like syntax VERSION='value  can have many spaces if quoted' and COOKIE=1243
   assert_defined VERSION COOKIE # 👀 Checks if values exist in the scope and they are not empty
 
@@ -370,6 +371,7 @@ x install_ios_runtime VERSION=17.2 COOKIE='123456...'
 Args can be getopts-styled (--name + space + valuer string).
 ```sh
 function jenkins_job_get_script {
+  local job_name
   read_opt -n --name job_name # 👀 Search for both long and short form
   assert_defined job_name jenkins_creds # 👀 Check if required values is ether in parsed args or ENV
 
@@ -422,7 +424,7 @@ function git:reset_retained_lfs_files {
 }
 ```
 
-### ENV
+### Use ENV
 
 You can export values to executed processes and commands.
 
@@ -462,11 +464,47 @@ function install_system_software {
 }
 ```
 
-### Load tasks from source
+### Task visibility
 
-Task functions can be declared in a separete file and inlined in runtime inside the main Xfile body via 'source' command.
+All functions you declare directly in Xfile or in a script inlined with `source` command (like `impl.sh` and `xlib.sh`) will be available in the script scope.
 
-Hovewer it is better to use 'load_source' helper, in order to gain Xfile built-in 'help'-related Xfile logic for free.
+You can execute it from command line.
+
+```sh
+x log "Some words" # task defined in Xfile_source/xlib
+x task_args my_function # task defined in Xfile_source/impl
+```
+
+If you want to define utility function that not meant to be called as task, you can define it without function keyword:
+
+```sh
+copy_commit_msg() {
+  git show -s --format='%B' | pbcopy
+}
+```
+
+It won't be listed in the `help` output.
+
+However it will be present in scope and still can be called via `x`.
+
+```sh
+x copy_commit_msg ## works as task
+```
+
+To minimize the risk of unwanted calls, better use "private" naming convention:
+
+```sh
+_copy_commit_msg() {}
+private:copy_commit_msg() {}
+```
+
+#### Load tasks from source
+
+Task functions can be declared in a separate file and inlined in runtime inside the main Xfile body via `source` command.
+
+However it is better to use `load_source` helper, in order to gain Xfile built-in 'help'-related Xfile logic for free.
+
+`load_optional_source` may be handy for optional user-defined tasks file.
 
 ```sh
 # in ./Xfile
@@ -476,13 +514,13 @@ load_source "$SCRIPTS_FOLDER/ruby_x.sh"
 load_optional_source "$GIT_ROOT/usr/xprofile" # may not exist, developer's local tasks and ENV
 ```
 
-### Link children
+#### Link children
 
-Instead of sourcing all the Xfiles as parts in your main Xfile, it may be convinient to incapsulate complex logic in separate Xfile – child.
+Instead of sourcing all the Xfiles as parts in your main Xfile, it may be convenient to incapsulate complex logic in separate Xfile – child.
 
-Thats prevents scope pollution – child may declare "local" helper functions with short names without worries about re-declaration.
+Thats prevents scope pollution – child may declare "local" helper functions with short names without worries about re-declaration of main Xfile tasks.
 
-Hovewer be aware of next performance concirn: task call has O(N) dispatch complexity (N - linked childred count) and results a new process spawn, which is far more costly than simple local task call (which is function call, O(1) dispatch complexity).
+However be aware of next performance concern: task call has O(N) dispatch complexity (N - linked children count) and results a new process spawn, which is far more costly than simple local task call (which is function call, O(1) dispatch complexity).
 
 Child can be 'linked' with:
 
@@ -507,58 +545,3 @@ function my_task() {
   task test_xfile
 }
 ```
-
-## Motivation
-
-Xfile initial goal was to replace `Makefile` as a repo scripts launcher (which is a misuse of Makefile).
-
-### About Makefile
-
-Makefile is a tool for build automation, typically used for C code compilation. It has it's own syntax and interpreter.
-
-It's ability to run shell commands in `.PHONY` targets without making/modifying files is actually a side effect.
-
-Also Makefile is widely used as a bucket for shell commands aliases in git repositories, an entry point for committed scripts. Especially in iOS development bubble.
-
-I see next reasons for that:
-- `make` binary is built-in – no need to setup (for MacOS at least)
-- `Makefile` is a common solution so it is likely to be reused
-- syntax is simple for short and non-parametrized commands
-
-It works in simple scenarios that can be hardcoded. But lucks arguments reading support.
-
-Bash power of structural programming (loops, conditions, vars, arrays) is not available in Makefile source code.
-
-### About Xfile
-
-Why run `bash (terminal) -> Makefile -> bash (script).`, if `bash.` possible?
-
-Makefile use case described above can be implemented with pure bash script.
-
-Xfile aimed to be a:
-- solid foundation for API stability, due to:
-  - sigle ENV setup point for all repository scripts
-  - sigle CLI API facade for all repository scripts
-  - does not adds any new abstraction layer between shell command and scripts
-- SDK for fast bash script debug and development, providing build-in features like:
-  - argument readers in various forms (including flags and optional args)
-  - help and documentation features
-  - task names and args completion for Terminal.app
-  - logs of task stack
-  - logs of exit code and failed command
-  - faster execution of complex tasks (cause 'task' is typically just a function call, not a costly new process spawn)
-
-## Naming
-
-"x" stands for eXecute.
-
-It is shortest meaningful alias for command.
-
-Also name distinguishes Xfile from existing Taskfile (YAML config tool).
-
-## Links
-
-More context:
-- [Stop Using Makefile](https://dev.to/calvinmclean/stop-using-makefile-use-taskfile-instead-4hm9) – why Makefile is bad practice
-- [Taskfile (bash)](https://github.com/adriancooney/Taskfile) – Xfile "parent" and the source of inspiration, blank bash snippet for storing multiple tasks in one script
-- [Shell History](https://martinheinz.dev/blog/110)
