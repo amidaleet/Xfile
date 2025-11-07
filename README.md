@@ -230,7 +230,7 @@ Each function can be executed as:
 - `task` – meaning simple call of specified function
 - `process` – new bash process that will call specified function
 
-`process` may be required if your put your function call inside a logical evaluation and want to presist `errexit` behaviour inside called function body.
+`process` may be required if your put your function call inside a logical evaluation and want to persist `errexit` behavior inside called function body.
 
 `Xfile` is designed to work with `errexit` option (`set -e`).
 

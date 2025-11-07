@@ -228,12 +228,11 @@ function process { ## run task (as new bash process) passing call args
 }
 
 _task_in_child() { ## ## Private API. Runs task in child, task should checked to be declared beforehand
-  local THIS_XFILE_PATH=$1
-  _log_move_to_task "$2"
+  _log_move_to_task "$2" "[${1##*/}]"
   local _X_FAILED_COMMAND
   _cache_failed_command_for_logging "${@:2}"
   local code=0
-  _X_CALLED_FROM_XFILE_OR_CHILD=true \
+  _X_CALLED_FROM_XFILE_OR_CHILD=true THIS_XFILE_PATH="$1" \
     "$@" || { code=$?; }
   _log_move_from_task "$code" "$_X_FAILED_COMMAND"
   return "$code"
@@ -269,9 +268,8 @@ _log_move_to_task() { ## Private API. Handles CALL STACK
   local new_part=$1
 
   if [ -n "$2" ]; then
-    new_part="$new_part $2"
+    new_part="$2 $new_part"
   fi
-  new_part="$new_part [${THIS_XFILE_PATH##*/}]"
 
   if [ -z "$_X_TASK_STACK_STR" ]; then
     printf "🚀 $(tput setaf 4)do: %s$(tput sgr0)\n" "$new_part" 1>&2
