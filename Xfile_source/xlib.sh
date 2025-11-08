@@ -101,7 +101,7 @@ function read_arr() { ## read script arg (the one following $1) as array named $
 function str_to_arr() { ## split string $1 to array named $2, using $3 as elements separator (default: ' ')
   local _ifs="${3:-' '}"
 
-  if [ "$_ifs" = '\n' ]; then
+  if [ "$_ifs" = '\n' ] || [ "$_ifs" = $'\n' ]; then
     IFS=$'\n' read -r -d '' -a "$2" <<< "$1"
   else
     local tmp el
@@ -109,7 +109,7 @@ function str_to_arr() { ## split string $1 to array named $2, using $3 as elemen
     eval "$2=()"
     for el in "${tmp[@]}"; do
       if [ -z "$el" ]; then continue; fi
-      eval "$2+=( \"\$el\" )"
+      eval "$2+=( '$el' )"
     done
   fi
 }
