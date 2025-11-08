@@ -15,24 +15,9 @@ function test_xfile() { ## Test Xfile implementation (arguments handling)
 
     task test_var_is_true
     task test_assert_defined
-    task test_args_parsing -l VERSION="42  20" --word 'word' -f -t "Text with  3   words and spaces" BETA_NUMBER='beta'
-    task test_args_parsing -l -f -w 'word' -t "Text with  3   words and spaces" BETA_NUMBER='beta' VERSION="42  20"
-    task test_args_parsing -lf -w 'word' -t "Text with  3   words and spaces" BETA_NUMBER='beta' VERSION="42  20"
-    task test_args_parsing --local --word 'word' --force -t "Text with  3   words and spaces" BETA_NUMBER='beta' VERSION="42  20"
-    task test_args_parsing BETA_NUMBER=beta --local --word 'word' --force --text "Text with  3   words and spaces" VERSION="42  20"
-    process test_args_parsing BETA_NUMBER=beta --local --word 'word' --force --text "Text with  3   words and spaces" VERSION="42  20"
-    task test_read_flags -o -e
-    task test_read_flags --expected --other
+    task test_args_readers
     task test_arr_to_str
-    EXPECTED='first:second' task test_read_arr -a 'first second'
-    EXPECTED='first:second' task test_read_arr -a 'first:second' :
-    EXPECTED='first:second' task test_read_arr -a 'first second' ' '
-    EXPECTED='first:second' task test_read_arr -a '  first   second   ' ' '
-    EXPECTED='first:second' task test_read_arr -a '::first:second:' :
-    EXPECTED=' first: second' task test_read_arr -a ': first: second:' :
-    EXPECTED='first:second' task test_read_arr -a $'first\nsecond' '\n'
-    EXPECTED='first:second' task test_read_arr -a $'\nfirst\nsecond\n' '\n'
-    EXPECTED='first  :second  ' task test_read_arr -a $'\nfirst  \nsecond  \n' '\n'
+    task test_read_arr
     task test_xfile_children
     task test_xfile_dispatch
     task test_forward_out_and_err_to_dir
@@ -122,74 +107,106 @@ test_assert_defined() {
   log_success "assert_defined works as expected!"
 }
 
-test_args_parsing() {
+test_args_readers() {
+  local process_out fails_count_before_this_tests=$TEST_FAILS_COUNT
+
+  task assert_opt_and_args_read -l VERSION="42  20" --word 'word' -f -t "Text with  3   words and spaces" BETA_NUMBER='beta'
+  task assert_opt_and_args_read -l -f -w 'word' -t "Text with  3   words and spaces" BETA_NUMBER='beta' VERSION="42  20"
+  task assert_opt_and_args_read -lf -w 'word' -t "Text with  3   words and spaces" BETA_NUMBER='beta' VERSION="42  20"
+  task assert_opt_and_args_read --local --word 'word' --force -t "Text with  3   words and spaces" BETA_NUMBER='beta' VERSION="42  20"
+  task assert_opt_and_args_read BETA_NUMBER=beta --local --word 'word' --force --text "Text with  3   words and spaces" VERSION="42  20"
+  process_out=$(process assert_opt_and_args_read BETA_NUMBER=beta --local --word 'word' --force --text "Text with  3   words and spaces" VERSION="42  20")
+  task assert_flags_read -o -e
+  task assert_flags_read --expected --other
+
+  if [ -n "$process_out" ]; then
+    puts "$process_out"
+    ((++TEST_FAILS_COUNT))
+  fi
+  fail_if_new_assertions_has_failed || return $?
+
+  log_success "Args readers works as expected!"
+}
+
+assert_opt_and_args_read() {
+  local WORD TEXT VERSION BETA_NUMBER
   read_opt -w --word WORD
   read_opt -t --text TEXT
   read_args VERSION BETA_NUMBER
 
-  local fails_count_before_this_tests=$TEST_FAILS_COUNT
-
   if ! read_flags --force -f; then
-    puts "test_args_parsing: Missing expected --force -f flag!"
+    puts "assert_opt_and_args_read: Missing expected --force -f flag!"
     ((++TEST_FAILS_COUNT))
   fi
 
   if ! read_flags --local -l; then
-    puts "test_args_parsing: Missing expected --local -l flag!"
+    puts "assert_opt_and_args_read: Missing expected --local -l flag!"
     ((++TEST_FAILS_COUNT))
   fi
 
   if read_flags --missing; then
-    puts "test_args_parsing: Unexpected --missing flag resolved to true!"
+    puts "assert_opt_and_args_read: Unexpected --missing flag resolved to true!"
     ((++TEST_FAILS_COUNT))
   fi
 
   if [ "$WORD" != "word" ]; then
-    puts "test_args_parsing: $WORD != word"
+    puts "assert_opt_and_args_read: $WORD != word"
     ((++TEST_FAILS_COUNT))
   fi
 
   if [ "$TEXT" != "Text with  3   words and spaces" ]; then
-    puts "test_args_parsing: $TEXT != Text with  3   words and spaces"
+    puts "assert_opt_and_args_read: $TEXT != Text with  3   words and spaces"
     ((++TEST_FAILS_COUNT))
   fi
 
   if [ "$VERSION" != "42  20" ]; then
-    puts "test_args_parsing: $VERSION != 42  20"
+    puts "assert_opt_and_args_read: $VERSION != 42  20"
     ((++TEST_FAILS_COUNT))
   fi
 
   if [ "$BETA_NUMBER" != "beta" ]; then
-    puts "test_args_parsing: $BETA_NUMBER != beta"
+    puts "assert_opt_and_args_read: $BETA_NUMBER != beta"
     ((++TEST_FAILS_COUNT))
   fi
-
-  fail_if_new_assertions_has_failed || return $?
-
-  log_success "Args parsed as expected!"
 }
 
-test_read_flags() {
-  local fails_count_before_this_tests=$TEST_FAILS_COUNT
-
+assert_flags_read() {
   if read_flags -m --missing; then
-    puts "test_read_flags: Got unexpected --missing flag!"
+    puts "assert_flags_read: Got unexpected --missing flag!"
     ((++TEST_FAILS_COUNT))
   fi
   if ! read_flags -e --expected; then
-    puts "test_read_flags: Failed to read --expected flag!"
+    puts "assert_flags_read: Failed to read --expected flag!"
     ((++TEST_FAILS_COUNT))
   fi
-
-  fail_if_new_assertions_has_failed || return $?
-
-  log_success "Flags parsed as expected!"
 }
 
 test_read_arr() {
-  local expected_arr idx fails_count_before_this_tests=$TEST_FAILS_COUNT
-  IFS=':' read -a expected_arr <<<"$EXPECTED"
+  local expected_arr fails_count_before_this_tests=$TEST_FAILS_COUNT
 
+  expected_arr=( first second )
+  task assert_arr_read -a 'first second'
+  task assert_arr_read -a 'first:second' :
+  task assert_arr_read -a 'first second' ' '
+  task assert_arr_read -a '  first   second   ' ' '
+  task assert_arr_read -a '::first:second:' :
+  task assert_arr_read -a $'first\nsecond' '\n'
+  task assert_arr_read -a $'first\nsecond' $'\n'
+  task assert_arr_read -a $'\nfirst\nsecond\n' '\n'
+
+  expected_arr=( ' first' ' second' )
+  task assert_arr_read -a ': first: second:' :
+
+  expected_arr=( 'first  ' 'second  ' )
+  task assert_arr_read -a $'\nfirst  \nsecond  \n' '\n'
+
+  fail_if_new_assertions_has_failed || return $?
+
+  log_success "Array parsed as expected!"
+}
+
+assert_arr_read() {
+  local idx myarray
   read_arr -a myarray "$3"
 
   if [ "${#myarray[@]}" != "${#expected_arr[@]}" ]; then
@@ -205,10 +222,6 @@ test_read_arr() {
     fi
     (( ++idx ))
   done
-
-  fail_if_new_assertions_has_failed || return $?
-
-  log_success "Array parsed as expected!"
 }
 
 test_arr_to_str() {
