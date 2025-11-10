@@ -225,8 +225,6 @@ function git:list_lfs_misplaced_files { ## Вывести файлы (корот
     return 3
   fi
 
-  str_to_arr "$(git lfs ls-files --name-only)" git_lfs_files '\n'
-
   local line
   while read -r line; do
     file=$(printf "$line") # Handle unicode escapes in filenames
@@ -236,6 +234,11 @@ function git:list_lfs_misplaced_files { ## Вывести файлы (корот
 
     if (( size > hard_limit )) || echo "$file" | grep -qE "$LFS_FILE"; then
       local is_stored_in_lfs=false
+
+      if ! declare -p git_lfs_files >/dev/null 2>&1; then
+        str_to_arr "$(git lfs ls-files --name-only)" git_lfs_files '\n'
+      fi
+
       for lfs_file in "${git_lfs_files[@]}"; do
         if [ "$lfs_file" = "$file" ]; then
           is_stored_in_lfs=true
