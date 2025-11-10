@@ -101,8 +101,18 @@ function read_arr() { ## read script arg (the one following $1) as array named $
 function str_to_arr() { ## split string $1 to array named $2, using $3 as elements separator (default: ' ')
   local _ifs="${3:-' '}"
 
+  if [ -z "$1" ]; then
+    eval "$2=()"
+    return 0
+  fi
+
   if [ "$_ifs" = '\n' ] || [ "$_ifs" = $'\n' ]; then
-    IFS=$'\n' read -r -d '' -a "$2" <<< "$1"
+    local line
+    eval "$2=()"
+    while IFS=$'\n' read -r line; do
+      if [ -z "$line" ]; then continue; fi
+      eval "$2+=( \"\$line\" )"
+    done <<< "$1"
   else
     local tmp el
     IFS=$_ifs read -r -a tmp <<< "$1"
