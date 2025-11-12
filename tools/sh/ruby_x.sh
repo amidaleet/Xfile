@@ -142,7 +142,7 @@ function ruby_lang_installer {
   read_opt --version ruby_version
   assert_defined ruby_version
 
-  short_ruby_version="${ruby_version%.*}"
+  short_ruby_version=${ruby_version%.*}
   target_dir="$HOME/.rubies/${ruby_version}"
 
   log_info "Requested ruby: $ruby_version"
@@ -177,14 +177,14 @@ function ruby_lang_installer {
 
   if command -v brew >/dev/null; then
     log "Using lib dirs from brew"
-    gmp_path="$(brew --prefix gmp)"
-    libyaml_path="$(brew --prefix libyaml)"
-    openssl_path="$(brew --prefix openssl)"
-    readline_path="$(brew --prefix readline)"
-    zlib_path="$(brew --prefix zlib)"
   else
     log_error "No brew to link dylibs!"
     return 23
+    gmp_path=$(brew --prefix gmp)
+    libyaml_path=$(brew --prefix libyaml)
+    openssl_path=$(brew --prefix openssl)
+    readline_path=$(brew --prefix readline)
+    zlib_path=$(brew --prefix zlib)
   fi
   log "Resolved dylib dirs:" "$gmp_path" "$libyaml_path" "$openssl_path" "$readline_path" "$zlib_path"
 

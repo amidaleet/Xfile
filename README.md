@@ -242,7 +242,7 @@ set -eo pipefail # 👀 Recommended bash options, can be customized
 
 source "Xfile_source/impl.sh" # 👀 'Copies' implementation script to Xfile body
 
-export GIT_ROOT="${GIT_ROOT:-"${PWD:-"$(pwd)"}"}" # 👀 ENV and process values setting may be placed anywhere
+export GIT_ROOT=${GIT_ROOT:-"${PWD:-"$(pwd)"}"} # 👀 ENV and process values setting may be placed anywhere
 
 # ---------- Block ---------- # 👀 Splits tasks in help
 
@@ -410,11 +410,11 @@ function git:reset_retained_lfs_files {
     return
   fi
 
-  local attributes_backup="$(cat .gitattributes)"
+  local attributes_backup=$(cat .gitattributes)
 
   echo -n "" >.gitattributes
 
-  local files="$(git diff --name-only | grep -v '.gitattributes' || true)"
+  local files=$(git diff --name-only | grep -v '.gitattributes' || true)
   log "$files"
 
   echo "$files" | tr \\n \\0 | xargs -0 git checkout HEAD --
@@ -429,7 +429,7 @@ function git:reset_retained_lfs_files {
 You can export values to executed processes and commands.
 
 ```sh
-export GIT_ROOT="${GIT_ROOT:-"${PWD:-"$(pwd)"}"}" # visible in sub-processes
+export GIT_ROOT=${GIT_ROOT:-"${PWD:-"$(pwd)"}"} # visible in sub-processes
 SCRIPTS_FOLDER="tools/sh" # visible in the Xfile scope only
 
 function rubocop {

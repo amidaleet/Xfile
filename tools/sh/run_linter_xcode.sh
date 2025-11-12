@@ -7,7 +7,7 @@ if [ "$IS_CI" = true ]; then
   exit 0
 fi
 
-ROOT_DIR="${GIT_ROOT:-"$(git rev-parse --show-toplevel)"}"
+ROOT_DIR=${GIT_ROOT:-"$(git rev-parse --show-toplevel)"}
 
 pushd "$ROOT_DIR" || exit 3
 

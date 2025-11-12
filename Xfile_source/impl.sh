@@ -75,9 +75,9 @@ show_tasks_from() { ## print task descriptions list from $1 file, $2 – header 
   fi
 
   if [ -n "$2" ]; then
-    echo "$(tput setaf 4)# $2$(tput sgr0)"
+    printf "\e[34m# %s\e(B\e[m\n" "$2"
   else
-    echo "$(tput setaf 4)# ${1##"$GIT_ROOT/"} tasks:$(tput sgr0)"
+    printf "\e[34m# %s tasks:\e(B\e[m\n" "${1##"$GIT_ROOT/"}"
   fi
 
   local marks_and_func_first_lines
@@ -91,8 +91,8 @@ show_tasks_from() { ## print task descriptions list from $1 file, $2 – header 
   local line func_name func_description
   while IFS= read -r line; do
     if [[ "$line" == '# ----------'* ]]; then
-      line="${line#'# ---------- '}"
-      line="${line%' ----------'}"
+      line=${line#'# ---------- '}
+      line=${line%' ----------'}
       printf "\033[92m## %s\033[0m\n" "$line"
     else # function name() { ## description
       func_name=${line#*' '}
@@ -129,7 +129,7 @@ function usage { ## print common usage instructions for Xfile
 # ---------- Dispatch ----------
 
 function begin_xfile_task { ## Xfile task starting point, should be called after function declarations (Xfile last line)
-  local task_name="${_SCRIPT_ARGS_ARR[0]}" child_idx
+  local task_name=${_SCRIPT_ARGS_ARR[0]} child_idx
 
   if value_in_list "$task_name" "" help --help -h; then
     help 2>/dev/null
@@ -272,10 +272,10 @@ _log_move_to_task() { ## Private API. Handles CALL STACK
   fi
 
   if [ -z "$_X_TASK_STACK_STR" ]; then
-    printf "🚀 $(tput setaf 4)do: %s$(tput sgr0)\n" "$new_part" 1>&2
+    printf "🚀 \e[34mdo: %s\e(B\e[m\n" "$new_part" 1>&2
     _X_TASK_STACK_STR=$new_part
   else
-    printf "🌚 $(tput setaf 4)in: %s > %s$(tput sgr0)\n" "$_X_TASK_STACK_STR" "$new_part" 1>&2
+    printf "🌚 \e[34min: %s > %s\e(B\e[m\n" "$_X_TASK_STACK_STR" "$new_part" 1>&2
     _X_TASK_STACK_STR="$_X_TASK_STACK_STR > $new_part"
   fi
 
@@ -290,23 +290,23 @@ _log_move_from_task() { ## Private API. Handles CALL STACK
     just_finished_task=${_X_TASK_STACK_STR##*' > '}
     _X_TASK_STACK_STR=${_X_TASK_STACK_STR%' > '*}
     if [ "$code" != 0 ]; then
-      printf "💥 $(tput setaf 1)at: %s < %s$(tput sgr0)\n" "$_X_TASK_STACK_STR" "$just_finished_task" 1>&2
+      printf "💥 \e[31mat: %s < %s\e(B\e[m\n" "$_X_TASK_STACK_STR" "$just_finished_task" 1>&2
       if [ -n "$failed_command" ]; then
         log "💥 $code from command:" \
           "💥 $failed_command"
       fi
     else
-      printf "🌝 $(tput setaf 6)out: %s < %s$(tput sgr0)\n" "$_X_TASK_STACK_STR" "$just_finished_task" 1>&2
+      printf "🌝 \e[36mout: %s < %s\e(B\e[m\n" "$_X_TASK_STACK_STR" "$just_finished_task" 1>&2
     fi
   else
     if [ "$code" != 0 ]; then
-      printf "💥 $(tput setaf 1)failed: %s$(tput sgr0)\n" "$_X_TASK_STACK_STR" 1>&2
+      printf "💥 \e[31mfailed: %s\e(B\e[m\n" "$_X_TASK_STACK_STR" 1>&2
       if [ -n "$failed_command" ]; then
         log "💥 $code from command:" \
           "💥 $failed_command"
       fi
     else
-      printf "👍 $(tput setaf 6)done: %s$(tput sgr0)\n" "$_X_TASK_STACK_STR" 1>&2
+      printf "👍 \e[36mdone: %s\e(B\e[m\n" "$_X_TASK_STACK_STR" 1>&2
     fi
     _X_TASK_STACK_STR=''
   fi
@@ -383,12 +383,12 @@ try_find_child_with_task() {
     (( ++idx ))
     IFS=';' read -r -a child_info <<<"$child"
 
-    child_path="${child_info[0]}"
-    child_prefix="${child_info[1]}"
+    child_path=${child_info[0]}
+    child_prefix=${child_info[1]}
 
     if [ -n "$child_prefix" ]; then
       if [[ "$task_name" == "$child_prefix"* ]]; then
-        child_task_name="${task_name##"$child_prefix"}"
+        child_task_name=${task_name##"$child_prefix"}
       else
         continue
       fi
@@ -410,8 +410,8 @@ try_run_task_in_child() {
 
   IFS=';' read -r -a child_info <<<"${_LINKED_XFILE_CHILDREN["$1"]}"
 
-  child_path="${child_info[0]}"
-  child_prefix="${child_info[1]}"
+  child_path=${child_info[0]}
+  child_prefix=${child_info[1]}
 
   _task_in_child "$child_path" "${2##"$child_prefix"}" "${_SCRIPT_ARGS_ARR[@]:1}"
 }
@@ -424,12 +424,12 @@ impl:task_args_in_linked_children() { ## list $1 task args from first match in c
   for child in "${_LINKED_XFILE_CHILDREN[@]}"; do
     IFS=';' read -r -a child_info <<<"$child"
 
-    child_path="${child_info[0]}"
-    child_prefix="${child_info[1]}"
+    child_path=${child_info[0]}
+    child_prefix=${child_info[1]}
 
     if [ -n "$child_prefix" ]; then
       if [[ "$1" == "$child_prefix"* ]]; then
-        task_name="${1##"$child_prefix"}"
+        task_name=${1##"$child_prefix"}
       else
         continue
       fi
@@ -449,8 +449,8 @@ show_task_names_from_linked_children() {
   for child in "${_LINKED_XFILE_CHILDREN[@]}"; do
     IFS=';' read -r -a child_info <<<"$child"
 
-    child_path="${child_info[0]}"
-    child_prefix="${child_info[1]}"
+    child_path=${child_info[0]}
+    child_prefix=${child_info[1]}
 
     _call_child_impl_task "$child_path" task_names | sed "s/^/$child_prefix/"
   done
@@ -462,8 +462,8 @@ show_tasks_from_linked_children() { ## $1 – this Xfile prefix in parent Xfile
   for child in "${_LINKED_XFILE_CHILDREN[@]}"; do
     IFS=';' read -r -a child_info <<<"$child"
 
-    child_path="${child_info[0]}"
-    child_prefix="${child_info[1]}"
+    child_path=${child_info[0]}
+    child_prefix=${child_info[1]}
 
     _call_child_impl_task "$child_path" show_tasks '' "$1$child_prefix"
   done

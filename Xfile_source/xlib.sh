@@ -8,15 +8,9 @@ function puts() { ## print call args to stdout
 
 print_with_emoji_and_color_header() { ## print call args as lines to stdout, adding $1 emoji and $2 color to the first line
   if [ $# -gt 2 ]; then
-    printf "$1 $(tput setaf "$2")%s$(tput sgr0)\n" "$3"
+    printf "$1 \e[${2}m%s\e(B\e[m\n" "$3"
     if [ $# -gt 3 ]; then printf "%s\n" "${@:4}"; fi
   fi
-}
-
-color_str() { ## stdout ${@:2} strings with $1 color
-  echo -n "$(tput setaf "$1")"
-  echo -n "${@:2}"
-  echo -n "$(tput sgr0)"
 }
 
 function log() { ## print call args to stderr
@@ -24,27 +18,27 @@ function log() { ## print call args to stderr
 }
 
 function log_next() { ## print call args to stderr, with color and ⏳ emoji
-  print_with_emoji_and_color_header '⏳' 13 "$@" 1>&2
+  print_with_emoji_and_color_header '⏳' 95 "$@" 1>&2
 }
 
 function log_info() { ## print call args to stderr, with color and 👀 emoji
-  print_with_emoji_and_color_header '👀' 6 "$@" 1>&2
+  print_with_emoji_and_color_header '👀' 36 "$@" 1>&2
 }
 
 function log_note() { ## print call args to stderr, with color and 💁 emoji
-  print_with_emoji_and_color_header '💁' 5 "$@" 1>&2
+  print_with_emoji_and_color_header '💁' 35 "$@" 1>&2
 }
 
 function log_warn() { ## print call args to stderr, with color and ❗️ emoji
-  print_with_emoji_and_color_header '❗️' 3 "$@" 1>&2
+  print_with_emoji_and_color_header '❗️' 33 "$@" 1>&2
 }
 
 function log_error() { ## print call args to stderr, with color and ❌ emoji
-  print_with_emoji_and_color_header '❌' 1 "$@" 1>&2
+  print_with_emoji_and_color_header '❌' 31 "$@" 1>&2
 }
 
 function log_success() { ## print call args to stderr, with color and ✅ emoji
-  print_with_emoji_and_color_header '✅' 2 "$@" 1>&2
+  print_with_emoji_and_color_header '✅' 32 "$@" 1>&2
 }
 
 function read_args() { ## read Makefile styled script args (like: ARG=VALUE) named as call args
@@ -54,7 +48,7 @@ function read_args() { ## read Makefile styled script args (like: ARG=VALUE) nam
   for name in "$@"; do
     for argument in "${_SCRIPT_ARGS_ARR[@]}"; do
       if [[ $argument == "$name="* ]]; then
-        argument="${argument/"$name="/}"
+        argument=${argument/"$name="/}
         eval "$name='$argument'"
         continue 2 # name loop
       fi
@@ -99,7 +93,7 @@ function read_arr() { ## read script arg (the one following $1) as array named $
 }
 
 function str_to_arr() { ## split string $1 to array named $2, using $3 as elements separator (default: ' ')
-  local _ifs="${3:-' '}"
+  local _ifs=${3:-' '}
 
   if [ -z "$1" ]; then
     eval "$2=()"
@@ -133,9 +127,9 @@ function arr_to_str() { ## concat passed array $@ into output string, using $1 a
 
   for el in "$@"; do
     if [ -z "$str" ]; then
-      str="${el}"
+      str=$el
     else
-      str="${str}${separator}${el}"
+      str=${str}${separator}${el}
     fi
   done
   echo -n "$str"
@@ -147,7 +141,7 @@ function read_flags() { ## returns error code if none of the given script args p
   local short_flag
 
   for name in "$@"; do
-    short_flag="${name/-/}"
+    short_flag=${name/-/}
     if [ "${#short_flag}" = 1 ]; then # one letter flag can be mixed with others: "-b" is in "-abc"
       for argument in "${_SCRIPT_ARGS_ARR[@]}"; do
         if [[ $argument =~ ^-[a-zA-Z]*"${short_flag}"[a-zA-Z]* ]]; then

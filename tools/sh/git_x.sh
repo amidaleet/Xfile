@@ -126,10 +126,10 @@ function git:move_forgotten_files_to_lfs { ## Перенести ошибочн�
 
   if read_flags --staged -s; then
     log_info "Filter staged files"
-    files="$(git diff --diff-filter=d --name-only --cached |  sed -r 's/^"|"$//g' | grep -E "$LFS_FILE" || true)"
+    files=$(git diff --diff-filter=d --name-only --cached |  sed -r 's/^"|"$//g' | grep -E "$LFS_FILE" || true)
   elif read_flags --commited -c; then
     log_info "Filter files in last commit"
-    files="$(git log --diff-filter=d --first-parent --name-only --oneline -n 1 | tail -n +2 | sed -r 's/^"|"$//g' | grep -E "$LFS_FILE" || true)"
+    files=$(git log --diff-filter=d --first-parent --name-only --oneline -n 1 | tail -n +2 | sed -r 's/^"|"$//g' | grep -E "$LFS_FILE" || true)
   elif read_flags --all -a; then
     log_info "Filter all files"
     files=.
@@ -147,7 +147,7 @@ function git:move_forgotten_files_to_lfs { ## Перенести ошибочн�
   log_info "Files to filter:" \
     "$files"
 
-  printf "$files" | tr \\n \\0 | xargs -0 git add --renormalize -v
+  printf '%s\n' "$files" | tr \\n \\0 | xargs -0 git add --renormalize -v
 
   log_success "LFS filter applied to selected files"
 }
@@ -165,11 +165,11 @@ function git:reset_retained_lfs_files { ## Убрать неудаляемые L
     return
   fi
 
-  local attributes_backup="$(cat .gitattributes)"
+  local attributes_backup=$(cat .gitattributes)
 
   echo -n "" >.gitattributes
 
-  local files="$(git diff --name-only | grep -v '.gitattributes' || true)"
+  local files=$(git diff --name-only | grep -v '.gitattributes' || true)
   log "$files"
 
   echo "$files" | tr \\n \\0 | xargs -0 git checkout HEAD --
@@ -187,10 +187,10 @@ function git:assert_no_snapshot_fail_artifacts { ## Проверить отсу�
 
   if read_flags --staged -s; then
     log_info "Filter staged files"
-    files="$(git diff --diff-filter=d --name-only --cached | grep -E "$regex" || true)"
+    files=$(git diff --diff-filter=d --name-only --cached | grep -E "$regex" || true)
   elif read_flags --commited -c; then
     log_info "Filter files in last commit"
-    files="$(git log --diff-filter=d --first-parent --name-only --oneline -n 1 | tail -n +2 | grep -E "$regex" || true)"
+    files=$(git log --diff-filter=d --first-parent --name-only --oneline -n 1 | tail -n +2 | grep -E "$regex" || true)
   else
     log_warn "Option flags unspecified, add some:" \
       "$(task_args "${FUNCNAME[0]}")"
@@ -216,9 +216,9 @@ function git:list_lfs_misplaced_files { ## Вывести файлы (корот
 
   local git_files_ml_str
   if read_flags --staged -s; then
-    git_files_ml_str="$(git diff --diff-filter=d --name-only --cached | sed -r 's/^"|"$//g')"
+    git_files_ml_str=$(git diff --diff-filter=d --name-only --cached | sed -r 's/^"|"$//g')
   elif read_flags --commited -c; then
-    git_files_ml_str="$(git log --diff-filter=d --first-parent --name-only --oneline -n 1 | tail -n +2 | sed -r 's/^"|"$//g')"
+    git_files_ml_str=$(git log --diff-filter=d --first-parent --name-only --oneline -n 1 | tail -n +2 | sed -r 's/^"|"$//g')
   else
     log_warn "Option flags unspecified, add some:" \
       "$(task_args "${FUNCNAME[0]}")"
@@ -227,7 +227,7 @@ function git:list_lfs_misplaced_files { ## Вывести файлы (корот
 
   local line
   while read -r line; do
-    file=$(printf "$line") # Handle unicode escapes in filenames
+    file=$(printf '%s' "$line") # Handle unicode escapes in filenames
     if [ -d "$file" ]; then continue; fi
     local hash=$(git ls-files -s "$file" | cut -d ' ' -f 2)
     local size=$(git cat-file -s "$hash" 2>/dev/null)
@@ -268,31 +268,28 @@ function git:delete_merged_features { ## Удаляем feature/ ветки, у 
     git fetch origin --prune
   fi
 
-  local merged_features
-  local str
-  local count
+  local merged_features str
 
-  str="$(\
+  str=$(
     git for-each-ref --format '%(refname) %(upstream:track)' refs/heads \
-    | grep feature/ \
-    | awk '$2 == "[gone]" {sub("refs/heads/", "", $1); print $1}' \
-    )"
+      | grep feature/ \
+      | awk '$2 == "[gone]" {sub("refs/heads/", "", $1); print $1}' \
+      || true
+  )
 
-  str_to_arr "$str" merged_features '\n'
-
-  count="${#merged_features[@]}"
-
-  if [ "$count" -eq 0 ]; then
+  if [ -z "$str" ]; then
     log_success 'Merged features not found'
     return 0
   fi
+
+  str_to_arr "$str" merged_features '\n'
 
   log_info 'Found merged features:' \
     "${merged_features[@]}"
 
   git branch -D "${merged_features[@]}"
 
-  log_success "Removed $count branches"
+  log_success "Removed ${#merged_features[@]} branches"
 }
 
 ## --fetch

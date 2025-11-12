@@ -7,7 +7,7 @@ if [ -z "$_OUTPUT_LINE_BUFFERED" ]; then
   if command -v stdbuf >/dev/null; then exec stdbuf -oL -eL "$0" "$@"; fi
 fi
 
-GIT_ROOT="${GIT_ROOT:-"${PWD:-"$(pwd)"}"}"
+GIT_ROOT=${GIT_ROOT:-"${PWD:-"$(pwd)"}"}
 export GIT_ROOT
 export SCRIPTS_FOLDER="$GIT_ROOT/tools/sh"
 

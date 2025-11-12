@@ -2,7 +2,7 @@
 
 set -eo pipefail
 
-export GIT_ROOT="${GIT_ROOT:-"${PWD:-"$(pwd)"}"}"
+export GIT_ROOT=${GIT_ROOT:-"${PWD:-"$(pwd)"}"}
 
 source "$GIT_ROOT/Xfile_source/impl.sh"
 

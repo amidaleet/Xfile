@@ -235,6 +235,32 @@ test_arr_to_str() {
   log_success "arr_to_str works!"
 }
 
+_args_to_cmd_str() { ## fill _X_FAILED_COMMAND variable with given args
+  cmd=$1
+  shift
+
+  local arg
+  for arg in "$@"; do
+    cmd="$cmd '$arg'"
+  done
+}
+
+puts_failed_call() {
+  local cmd
+  _args_to_cmd_str "$@"
+  print_with_emoji_and_color_header '🚧' 35 'Failed call:' "$cmd"
+}
+
+puts_failed_output() {
+  print_with_emoji_and_color_header '🚧' 35 "Output in: $1" "$2"
+}
+
+puts_failed_diff() {
+  local delta
+  delta=$(diff <(echo "$1") <(echo "$2"))
+  print_with_emoji_and_color_header '🚧' 35 "Diff:" "$delta"
+}
+
 assert_cmd_output_and_err() {
   local out expected
 
@@ -248,13 +274,9 @@ assert_cmd_output_and_err() {
   if [ "$out" != "$expected" ]; then
     mkdir -p "$GIT_ROOT/output/expected/cmd_output/$1"
     echo "$out" >"$GIT_ROOT/output/expected/cmd_output/$1/out.log"
-
-    puts '' \
-      "$(color_str 5 "- Failed call:")" "$(arr_to_str ' ' "$@")" '' \
-      "$(color_str 5 "-- Output: in: $GIT_ROOT/output/expected/cmd_output/$1/out.log")" "$out" \
-      '--' \
-      "$(color_str 5 -- Diff:)" "$(diff <(echo "$out") <(echo "$expected"))" \
-      '--'
+    puts_failed_call "$@"
+    puts_failed_output "$GIT_ROOT/output/expected/cmd_output/$1/out.log" "$out"
+    puts_failed_diff "$out" "$expected"
     ((++TEST_FAILS_COUNT))
   fi
 }
@@ -272,13 +294,9 @@ assert_link_root_output() {
   if [ "$out" != "$expected" ]; then
     mkdir -p "$GIT_ROOT/output/expected/link_root/$1"
     echo "$out" >"$GIT_ROOT/output/expected/link_root/$1/out.log"
-
-    puts '' \
-      "$(color_str 5 "- Failed call:")" "$(arr_to_str ' ' "$@")" '' \
-      "$(color_str 5 "-- Output: in: $GIT_ROOT/output/expected/link_root/$1/out.log")" "$out" \
-      '--' \
-      "$(color_str 5 -- Diff:)" "$(diff <(echo "$out") <(echo "$expected"))" \
-      '--'
+    puts_failed_call "$@"
+    puts_failed_output "$GIT_ROOT/output/expected/link_root/$1/out.log" "$out"
+    puts_failed_diff "$out" "$expected"
     ((++TEST_FAILS_COUNT))
   fi
 }
@@ -296,13 +314,9 @@ assert_mock_root_output_and_err() {
   if [ "$out" != "$expected" ]; then
     mkdir -p "$GIT_ROOT/output/expected/mock_root/$1"
     echo "$out" >"$GIT_ROOT/output/expected/mock_root/$1/out.log"
-
-    puts '' \
-      "$(color_str 5 "- Failed call:")" "$(arr_to_str ' ' "$@")" '' \
-      "$(color_str 5 "-- Output in: $GIT_ROOT/output/expected/mock_root/$1/out.log")" "$out" \
-      '--' \
-      "$(color_str 5 -- Diff:)" "$(diff <(echo "$out") <(echo "$expected"))" \
-      '--'
+    puts_failed_call "$@"
+    puts_failed_output "$GIT_ROOT/output/expected/mock_root/$1/out.log" "$out"
+    puts_failed_diff "$out" "$expected"
     ((++TEST_FAILS_COUNT))
   fi
 }
@@ -320,13 +334,9 @@ assert_mock_root_output() {
   if [ "$out" != "$expected" ]; then
     mkdir -p "$GIT_ROOT/output/expected/mock_root/$1"
     echo "$out" >"$GIT_ROOT/output/expected/mock_root/$1/out.log"
-
-    puts '' \
-      "$(color_str 5 "- Failed call:")" "$(arr_to_str ' ' "$@")" '' \
-      "$(color_str 5 "-- Output in: $GIT_ROOT/output/expected/mock_root/$1/out.log")" "$out" \
-      '--' \
-      "$(color_str 5 -- Diff:)" "$(diff <(echo "$out") <(echo "$expected"))" \
-      '--'
+    puts_failed_call "$@"
+    puts_failed_output "$GIT_ROOT/output/expected/mock_root/$1/out.log" "$out"
+    puts_failed_diff "$out" "$expected"
     ((++TEST_FAILS_COUNT))
   fi
 }
@@ -343,14 +353,10 @@ assert_mock_root_err() {
 
   if [ "$out" != "$expected" ]; then
     mkdir -p "$GIT_ROOT/output/expected/mock_root/$1"
-    echo "$out" >"$GIT_ROOT/output/expected/mock_root/$1/out.log"
-
-    puts '' \
-      "$(color_str 5 "- Failed call:")" "$(arr_to_str ' ' "$@")" '' \
-      "$(color_str 5 "-- Output in: $GIT_ROOT/output/expected/mock_root/$1/out.log")" "$out" \
-      '--' \
-      "$(color_str 5 -- Diff:)" "$(diff <(echo "$out") <(echo "$expected"))" \
-      '--'
+    echo "$out" >"$GIT_ROOT/output/expected/mock_root/$1/err.log"
+    puts_failed_call "$@"
+    puts_failed_output "$GIT_ROOT/output/expected/mock_root/$1/err.log" "$out"
+    puts_failed_diff "$out" "$expected"
     ((++TEST_FAILS_COUNT))
   fi
 }
