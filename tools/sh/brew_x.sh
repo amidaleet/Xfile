@@ -81,7 +81,7 @@ function brew:repack_installed_deps { ## zip deps from brew (semi-portable archi
   log_next "Asking brew for deps path..."
 
   while read -r line; do
-    dep_cellar_dir="${line% (*}"
+    dep_cellar_dir=${line% (*}
     deps_cellar_dirs+=("$dep_cellar_dir")
   done < <(brew info "${repo_deps[@]}" | grep '/Cellar/')
 
@@ -92,15 +92,15 @@ function brew:repack_installed_deps { ## zip deps from brew (semi-portable archi
     "Total deps: ${#repo_deps[@]} | Total dirs: ${#deps_cellar_dirs[@]}"
   log_note 'deps may share dir sometimes!'
 
-  brew_bins_dir="$(which brew)"
-  brew_bins_dir="${brew_bins_dir%/*}"
-  brew_root="${brew_bins_dir%/*}"
+  brew_bins_dir=$(which brew)
+  brew_bins_dir=${brew_bins_dir%/*}
+  brew_root=${brew_bins_dir%/*}
   log_info 'Resolved brew bins dir:' \
     "$brew_bins_dir"
 
   log_next "Resolving needed bin dir symlinks list..."
   for symlink in "$brew_bins_dir"/*; do
-    real_bin_path="$(realpath "$symlink")"
+    real_bin_path=$(realpath "$symlink")
 
     for dir in "${deps_cellar_dirs[@]}"; do
       if [[ "$real_bin_path" == "$dir"* ]]; then
@@ -114,7 +114,7 @@ function brew:repack_installed_deps { ## zip deps from brew (semi-portable archi
 
   log_next "Resolving needed opt dir symlinks list..."
   for symlink in "$brew_root/opt"/*; do
-    real_bin_path="$(realpath "$symlink")"
+    real_bin_path=$(realpath "$symlink")
 
     for dir in "${deps_cellar_dirs[@]}"; do
       if [[ "$real_bin_path" == "$dir"* ]]; then
@@ -128,7 +128,7 @@ function brew:repack_installed_deps { ## zip deps from brew (semi-portable archi
 
   log_next "Resolving needed lib dir symlinks list..."
   for symlink in "$brew_root/lib"/*; do
-    real_bin_path="$(realpath "$symlink")"
+    real_bin_path=$(realpath "$symlink")
 
     for dir in "${deps_cellar_dirs[@]}"; do
       if [[ "$real_bin_path" == "$dir"* ]]; then
@@ -186,6 +186,62 @@ function brew:repack_installed_deps { ## zip deps from brew (semi-portable archi
 
   log_success '✅ Repack archive is ready at:' \
     "$zip_path"
+}
+
+function remap_dylib_to_utils_dir { ## переписать пути до библиотек с /opt/homebrew до DX_SHELL_UTILS_DIR
+  local file file_extension
+
+  log_info "dx_utils dir:" "$DX_SHELL_UTILS_DIR"
+
+  log_next "Searching for executables in dx_utils..."
+  while read -r file; do
+    file_name=${file##*/}
+    file_extension=${file_name##*.}
+
+    if value_in_list "$file_extension" 'sh' 'py' 'js' 'rb' 'perl' 'pl' 'cgi' 'sample'; then continue; fi
+    if [ ! -x "$file" ] && ! value_in_list "$file_extension" 'dylib' 'a' 'so'; then continue; fi
+
+    task map_dylibs_in_file "$file"
+  done < <(find "$DX_SHELL_UTILS_DIR" -type f)
+
+  log_success "Remapped all dx_utils!"
+}
+
+map_dylibs_in_file() {
+  local file file_name lib_id lib_dep_path new_lib_dep_path needs_codesign
+  file=$1
+  needs_codesign=false
+
+  log_next "Mapping file..." "$file"
+
+  lib_id=$(otool -D "$file" | grep '/opt/homebrew' || true)
+  if [ -n "$lib_id" ]; then
+    needs_codesign=true
+    lib_id="$DX_SHELL_UTILS_DIR/${lib_id##/opt/homebrew/}"
+
+    log_next "Spotted shared dylib:" \
+      "- at: $file"
+
+    log_next "changing identification name of shared dylib..."
+    install_name_tool -id "$lib_id" "$file"
+  fi
+
+  while read -r lib_dep_path; do
+    needs_codesign=true
+    new_lib_dep_path="$DX_SHELL_UTILS_DIR/${lib_dep_path##/opt/homebrew/}"
+
+    log_next "Spotted dylib dep to re-link:" \
+      "- at: $file" \
+      "- from: $lib_dep_path" \
+      "- to: $new_lib_dep_path"
+
+    log_next "Re-linking dep dylib..."
+    install_name_tool -change "$lib_dep_path" "$new_lib_dep_path" "$file"
+  done < <(otool -L "$file" | grep '/opt/homebrew' | sed -E 's/[[:space:]]*\(.*$//' | sed -E 's/^[[:space:]]+//' || true)
+
+  if [ "$needs_codesign" = true ]; then
+    codesign --force --sign - --timestamp=none "$file"
+  fi
 }
 
 begin_xfile_task

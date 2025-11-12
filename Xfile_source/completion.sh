@@ -63,7 +63,7 @@ function bind_xfile_completion() {
         # 2 or more args: suggest task_args for the given task name
         local task_args task_name w next
 
-        task_name="${COMP_WORDS[1]}"
+        task_name=${COMP_WORDS[1]}
         for w in "${COMP_WORDS[@]:2}"; do
           # bash splits task names with ":", so we must rebuild task_name
           if [ "$w" = ":" ]; then

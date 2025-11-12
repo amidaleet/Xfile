@@ -157,11 +157,14 @@ function xcode:set_header { ## Set org Xcode header template in user directory
   log_info "Set Xcode header template in ~/Library/Developer/Xcode/UserData/"
   cp "$TOOLS_DIR/xcode/IDETemplateMacros.plist" "$HOME/Library/Developer/Xcode/UserData/"
 
-  log_success "Updated template at: ~/Library/Developer/Xcode/UserData/, file: IDETemplateMacros.plist"
+  log_success "Шаблоны Sourcery Pro установлены. Пользуйтесь и наслаждайтесь 🙂"
 }
 
 function xcode:remove_derived_data { ## Erase derived data folder
-  local dd_path="$(defaults read com.apple.dt.Xcode.plist IDECustomDerivedDataLocation || echo "$HOME/Library/Developer/Xcode/DerivedData")"
+  local dd_path=$(
+    defaults read com.apple.dt.Xcode.plist IDECustomDerivedDataLocation \
+    || echo "$HOME/Library/Developer/Xcode/DerivedData"
+  )
 
   log_info "DerivedData path:" "$dd_path"
 
@@ -175,7 +178,7 @@ function xcode:fix_p12 { ## Смена алгоритма в .p12 (фиксит 
   local cert_path=$1
   assert_defined cert_path
 
-  local new_cert_path="${cert_path/.p12/_new.p12}"
+  local new_cert_path=${cert_path/.p12/_new.p12}
   log_info "Will save new cert to:" "$new_cert_path"
 
   openssl pkcs12 -in "$cert_path" -out crt.pem -clcerts -nokeys

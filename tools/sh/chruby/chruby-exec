@@ -32,7 +32,7 @@ if (( $# == 0 )); then
 	exit 1
 fi
 
-dir="$(realpath "$0")"; dir="${dir%/*}"
+dir=$(realpath "$0"); dir=${dir%/*}
 
 source "$dir/chruby.sh"
 command="chruby $(printf "%q " "${argv[@]}") && $(printf "%q " "$@")"
