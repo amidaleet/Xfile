@@ -147,7 +147,9 @@ function git:move_forgotten_files_to_lfs { ## Перенести ошибочн�
   log_info "Files to filter:" \
     "$files"
 
-  printf '%s\n' "$files" | tr \\n \\0 | xargs -0 git add --renormalize -v
+  # Handle unicode escapes in filenames
+  # shellcheck disable=SC2059
+  printf "$files" | tr \\n \\0 | xargs -0 git add --renormalize -v
 
   log_success "LFS filter applied to selected files"
 }
@@ -227,7 +229,9 @@ function git:list_lfs_misplaced_files { ## Вывести файлы (корот
 
   local line
   while read -r line; do
-    file=$(printf '%s' "$line") # Handle unicode escapes in filenames
+    # Handle unicode escapes in filenames
+    # shellcheck disable=SC2059
+    file=$(printf "$line")
     if [ -d "$file" ]; then continue; fi
     local hash=$(git ls-files -s "$file" | cut -d ' ' -f 2)
     local size=$(git cat-file -s "$hash" 2>/dev/null)
