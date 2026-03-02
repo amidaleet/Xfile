@@ -38,11 +38,11 @@ load_source "$SCRIPTS_FOLDER/git_x.sh"
 load_source "$SCRIPTS_FOLDER/ruby_x.sh"
 load_optional_source "$GIT_ROOT/usr/xprofile"
 
-link_child_xfile "$SCRIPTS_FOLDER/brew_x.sh"
-link_child_xfile "$SCRIPTS_FOLDER/Xcode_x.sh"
-link_child_xfile "$SCRIPTS_FOLDER/ios_runtime_x.sh"
-link_child_xfile "$SCRIPTS_FOLDER/jenkins_x.sh"
-link_child_xfile "$GIT_ROOT/Xfile_source/tests/tests.sh"
+link_child_xfile "$SCRIPTS_FOLDER/brew_x.sh" '' brew:install_brew_native brew:install_deps
+link_child_xfile "$SCRIPTS_FOLDER/Xcode_x.sh" '' xcode:install xcode:set_header xcode:remove_derived_data xcode:patch_3rd_party_deps_for_arm64_simulator
+link_child_xfile "$SCRIPTS_FOLDER/ios_runtime_x.sh" '' ios_runtime:install ios_runtime:fix_missing
+link_child_xfile "$SCRIPTS_FOLDER/jenkins_x.sh" '' jenkins_sync_jobs
+link_child_xfile "$GIT_ROOT/Xfile_source/tests/tests.sh" '' test_xfile
 
 # ---------- Setup ----------
 

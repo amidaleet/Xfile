@@ -24,6 +24,14 @@ function child_stack_1 {
   log "child_stack_1 end without err"
 }
 
+function child_stack_1_cached {
+  log "child_stack_1_cached start" "$@"
+
+  task child_stack_2 'from child_stack_1_cached'
+
+  log "child_stack_1_cached end without err"
+}
+
 child_stack_2() {
   log "child_stack_2 start" "$@"
 
