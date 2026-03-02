@@ -4,7 +4,7 @@ set -eo pipefail
 
 source "$GIT_ROOT/Xfile_source/impl.sh"
 
-link_child_xfile "$GIT_ROOT/Xfile"
+link_child_xfile "$GIT_ROOT/Xfile" '' ruby_run
 
 ## --to_remote --to_local
 function jenkins_sync_jobs { ## Update Jobs code in repo <-> cloud server

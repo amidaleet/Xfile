@@ -8,8 +8,32 @@ source "$GIT_ROOT/Xfile_source/impl.sh"
 
 load_source "$GIT_ROOT/Xfile_source/tests/mock_loaded_source.sh"
 
-link_child_xfile "$GIT_ROOT/Xfile_source/tests/mock_child.sh"
+link_child_xfile "$GIT_ROOT/Xfile_source/tests/mock_child.sh" '' 'child_stack_1_cached'
 link_child_xfile "$GIT_ROOT/Xfile_source/tests/mock_child_two.sh"
+
+function test_forward_out_and_err_to_dir_one_level {
+  forward_out_and_err_to_dir "$GIT_ROOT/output/xfile_tests/forward_out_and_err_to_dir_one_level/main"
+
+  # shellcheck disable=SC2329
+  function bar {
+    log 'in bar'
+    puts 'out in bar'
+    log 'ended bar'
+  }
+
+  log 'started test_forward_out_and_err_to_dir_one_level'
+
+  log 'in test_forward_out_and_err_to_dir_one_level'
+
+  puts 'out 1 in test_forward_out_and_err_to_dir_one_level'
+  task bar
+  puts 'out 2 in test_forward_out_and_err_to_dir_one_level'
+
+  log 'in test_forward_out_and_err_to_dir_one_level after bar'
+
+  unset bar
+  log 'ended test_forward_out_and_err_to_dir_one_level'
+}
 
 function test_forward_out_and_err_to_dir {
   forward_out_and_err_to_dir "$GIT_ROOT/output/xfile_tests/forward_out_and_err_to_dir/main"
@@ -60,23 +84,50 @@ function test_run_with_status_marker {
     puts 'out in foo'
   }
 
-  log 'started test_forward_out_and_err_to_dir'
+  log 'started test_run_with_status_marker'
 
-  log 'in test_forward_out_and_err_to_dir'
+  log 'in test_run_with_status_marker'
 
-  puts 'out 1 in test_forward_out_and_err_to_dir'
+  puts 'out 1 in test_run_with_status_marker'
   run_with_status_marker "$GIT_ROOT/output/xfile_tests/test_run_with_status_marker/bar" \
     task bar
-  puts 'out 2 in test_forward_out_and_err_to_dir'
+  puts 'out 2 in test_run_with_status_marker'
 
-  log 'in test_forward_out_and_err_to_dir after bar'
+  log 'in test_run_with_status_marker after bar'
 
   unset bar foo
-  log 'ended test_forward_out_and_err_to_dir'
+  log 'ended test_run_with_status_marker'
+}
+
+function test_run_with_status_marker_one_level {
+  # shellcheck disable=SC2329
+  function bar {
+    log 'in bar'
+    puts 'out in bar'
+    log 'ended bar'
+  }
+
+  log 'started test_run_with_status_marker_one_level'
+
+  log 'in test_run_with_status_marker_one_level'
+
+  puts 'out 1 in test_run_with_status_marker_one_level'
+  run_with_status_marker "$GIT_ROOT/output/xfile_tests/test_run_with_status_marker_one_level/bar" \
+    task bar
+  puts 'out 2 in test_run_with_status_marker_one_level'
+
+  log 'in test_run_with_status_marker_one_level after bar'
+
+  unset bar
+  log 'ended test_run_with_status_marker_one_level'
 }
 
 function test_tasks_chain_from_root_to_child {
   task child_stack_1 'from test_tasks_chain_from_root_to_child'
+}
+
+function test_cached_tasks_chain_from_root_to_child {
+  task child_stack_1_cached 'from test_cached_tasks_chain_from_root_to_child'
 }
 
 function test_tasks_chain_from_root_to_child_fails_in_child {

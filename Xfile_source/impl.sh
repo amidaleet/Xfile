@@ -367,36 +367,61 @@ show_tasks_from_loaded_sources() {
 
 # ---------- Children ----------
 
-function link_child_xfile { ## make child Xfile tasks executable from this Xfile. $1 - path to child, $2 - optional tasks prefix
+function link_child_xfile { ## make child Xfile tasks executable from this Xfile. $1 - path to child, $2 - optional tasks prefix, $3... – task names cache
   assert_abs_path "$1"
   if [ ! -x "$1" ]; then
     log_error "Trying to link the child while it is not an executable:" "$1"
     return 17
   fi
-  _LINKED_XFILE_CHILDREN+=("$1;$2")
+  local child_path=$1
+  local child_prefix=$2
+  local child_task_names=''
+  if [ $# -gt 2 ]; then
+    shift
+    shift
+    child_task_names="$*"
+  fi
+  _LINKED_XFILE_CHILDREN+=("$child_path" "$child_prefix" "$child_task_names")
 }
 
 try_find_child_with_task() {
-  local idx=-1 child child_info child_path child_prefix child_task_name
+  local child_path child_prefix child_task_names child_task_name
+  local long_search_data=()
 
-  for child in "${_LINKED_XFILE_CHILDREN[@]}"; do
-    (( ++idx ))
-    IFS=';' read -r -a child_info <<<"$child"
+  local i limit="${#_LINKED_XFILE_CHILDREN[@]}"
+  for ((i = 0; i < limit; i += _LINKED_XFILE_CHILD_LENGTH)); do
+    child_path=${_LINKED_XFILE_CHILDREN[$i]}
+    child_prefix=${_LINKED_XFILE_CHILDREN[(( i + 1 ))]}
+    child_task_names=${_LINKED_XFILE_CHILDREN[(( i + 2 ))]}
 
-    child_path=${child_info[0]}
-    child_prefix=${child_info[1]}
-
-    if [ -n "$child_prefix" ]; then
+    if [[ -n $child_prefix ]]; then
       if [[ "$task_name" == "$child_prefix"* ]]; then
         child_task_name=${task_name##"$child_prefix"}
       else
+        # if prefix specified, task_name must match it. Got mismatch
         continue
       fi
     else
       child_task_name=$task_name
     fi
 
+    if [[ -n $child_task_names ]]; then
+      if [[ " $child_task_names " == *\ "$child_task_name"\ * ]]; then
+        echo -n "$i"
+        return
+      fi
+    fi
+    long_search_data+=("$i" "$child_path" "$child_task_name")
+  done
+
+  local idx i limit=${#long_search_data[@]}
+  for ((i = 0; i < limit; i += _LINKED_XFILE_CHILD_LENGTH)); do
+    idx=${long_search_data[$i]}
+    child_path=${long_search_data[(( i + 1 ))]}
+    child_task_name=${long_search_data[(( i + 2 ))]}
+
     if _call_child_impl_task "$child_path" task_declared "$child_task_name" 2>/dev/null; then
+      log_warn "Called uncached child task '$child_task_name', should add it to task list in 'link_child_xfile' call"
       echo -n "$idx"
       return
     fi
@@ -406,64 +431,77 @@ try_find_child_with_task() {
 }
 
 try_run_task_in_child() {
-  local child_info child_path child_prefix child_task_name
+  local child_path child_prefix
 
-  IFS=';' read -r -a child_info <<<"${_LINKED_XFILE_CHILDREN["$1"]}"
-
-  child_path=${child_info[0]}
-  child_prefix=${child_info[1]}
+  child_path=${_LINKED_XFILE_CHILDREN[$1]}
+  child_prefix=${_LINKED_XFILE_CHILDREN[(( $1 + 1 ))]}
 
   _task_in_child "$child_path" "${2##"$child_prefix"}" "${_SCRIPT_ARGS_ARR[@]:1}"
 }
 
 impl:task_args_in_linked_children() { ## list $1 task args from first match in children files
-  local child child_info child_path child_prefix task_name
+  local child_path child_prefix child_task_names child_task_name
 
   if [ "${#_LINKED_XFILE_CHILDREN[@]}" -eq 0 ]; then return 7; fi
 
-  for child in "${_LINKED_XFILE_CHILDREN[@]}"; do
-    IFS=';' read -r -a child_info <<<"$child"
+  local long_search_data=()
 
-    child_path=${child_info[0]}
-    child_prefix=${child_info[1]}
+  local i limit="${#_LINKED_XFILE_CHILDREN[@]}"
+  for ((i = 0; i < limit; i += _LINKED_XFILE_CHILD_LENGTH)); do
+    child_path=${_LINKED_XFILE_CHILDREN[$i]}
+    child_prefix=${_LINKED_XFILE_CHILDREN[(( i + 1 ))]}
+    child_task_names=${_LINKED_XFILE_CHILDREN[(( i + 2 ))]}
 
-    if [ -n "$child_prefix" ]; then
+    if [[ -n $child_prefix ]]; then
       if [[ "$1" == "$child_prefix"* ]]; then
-        task_name=${1##"$child_prefix"}
+        child_task_name=${1##"$child_prefix"}
       else
+        # if prefix specified, task_name must match it. Got mismatch
         continue
       fi
     else
-      task_name=$1
+      child_task_name=$1
     fi
 
-    _call_child_impl_task "$child_path" task_args "$task_name" && return || true
+    if [[ -n $child_task_names ]]; then
+      if [[ " $child_task_names " == *\ "$child_task_name"\ * ]]; then
+        _call_child_impl_task "$child_path" task_args "$child_task_name" || true
+        return
+      fi
+    fi
+    long_search_data+=("$child_path" "$child_task_name")
+  done
+
+  local i limit=${#long_search_data[@]}
+  for ((i = 0; i < limit; i += 2)); do
+    child_path=${long_search_data[$i]}
+    child_task_name=${long_search_data[(( i + 1 ))]}
+
+    _call_child_impl_task "$child_path" task_args "$child_task_name" && return || true
   done
 
   return 9
 }
 
 show_task_names_from_linked_children() {
-  local child child_info child_path child_prefix
+  local child_path child_prefix
 
-  for child in "${_LINKED_XFILE_CHILDREN[@]}"; do
-    IFS=';' read -r -a child_info <<<"$child"
-
-    child_path=${child_info[0]}
-    child_prefix=${child_info[1]}
+  local i limit="${#_LINKED_XFILE_CHILDREN[@]}"
+  for ((i = 0; i < limit; i += _LINKED_XFILE_CHILD_LENGTH)); do
+    child_path=${_LINKED_XFILE_CHILDREN[$i]}
+    child_prefix=${_LINKED_XFILE_CHILDREN[(( i + 1 ))]}
 
     _call_child_impl_task "$child_path" task_names | sed "s/^/$child_prefix/"
   done
 }
 
 show_tasks_from_linked_children() { ## $1 – this Xfile prefix in parent Xfile
-  local child child_info child_path child_prefix
+  local child_path child_prefix
 
-  for child in "${_LINKED_XFILE_CHILDREN[@]}"; do
-    IFS=';' read -r -a child_info <<<"$child"
-
-    child_path=${child_info[0]}
-    child_prefix=${child_info[1]}
+  local i limit="${#_LINKED_XFILE_CHILDREN[@]}"
+  for ((i = 0; i < limit; i += _LINKED_XFILE_CHILD_LENGTH)); do
+    child_path=${_LINKED_XFILE_CHILDREN[$i]}
+    child_prefix=${_LINKED_XFILE_CHILDREN[(( i + 1 ))]}
 
     _call_child_impl_task "$child_path" show_tasks '' "$1$child_prefix"
   done
@@ -552,6 +590,7 @@ function xfile_init_copy() { ## copy sources and Xfile sample to $1 dir
 
 { ## Set important Xfile implementation ENV. Performed at Xfile start while impl is sourced. Should not be called manually
   _LINKED_XFILE_CHILDREN=()
+  _LINKED_XFILE_CHILD_LENGTH=3
   _LOADED_SOURCE_FILES=()
   _X_TASK_STACK_BASH_SUBSHELL=$BASH_SUBSHELL
   _X_TASK_STACK_LENGTH_IN_SUBSHELL=0

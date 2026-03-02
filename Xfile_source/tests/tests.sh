@@ -20,9 +20,10 @@ function test_xfile() { ## Test Xfile implementation (arguments handling)
     task test_read_arr
     task test_xfile_children
     task test_xfile_dispatch
-    task test_forward_out_and_err_to_dir
-    task test_run_with_status_marker
 
+    # Skip multiple level nesting test because of flaky output lines order due to race between 2 tee
+    task test_forward_out_and_err_to_dir_one_level
+    task test_run_with_status_marker_one_level
 
     # - Note:
     # '$(...)' does not inherit caller shell options.
@@ -441,6 +442,7 @@ HEREDOC
 
   assert_mock_root_output_and_err test_tasks_chain_from_root_to_child <<'HEREDOC'
 🚀 [34mdo: test_tasks_chain_from_root_to_child(B[m
+❗️ [33mCalled uncached child task 'child_stack_1', should add it to task list in 'link_child_xfile' call(B[m
 🌚 [34min: test_tasks_chain_from_root_to_child > [mock_child.sh] child_stack_1(B[m
 child_stack_1 start
 from test_tasks_chain_from_root_to_child
@@ -454,8 +456,24 @@ child_stack_1 end without err
 👍 [36mdone: test_tasks_chain_from_root_to_child(B[m
 HEREDOC
 
+  assert_mock_root_output_and_err test_cached_tasks_chain_from_root_to_child <<'HEREDOC'
+🚀 [34mdo: test_cached_tasks_chain_from_root_to_child(B[m
+🌚 [34min: test_cached_tasks_chain_from_root_to_child > [mock_child.sh] child_stack_1_cached(B[m
+child_stack_1_cached start
+from test_cached_tasks_chain_from_root_to_child
+🌚 [34min: test_cached_tasks_chain_from_root_to_child > [mock_child.sh] child_stack_1_cached > child_stack_2(B[m
+child_stack_2 start
+from child_stack_1_cached
+child_stack_2 end without err
+🌝 [36mout: test_cached_tasks_chain_from_root_to_child > [mock_child.sh] child_stack_1_cached < child_stack_2(B[m
+child_stack_1_cached end without err
+🌝 [36mout: test_cached_tasks_chain_from_root_to_child < [mock_child.sh] child_stack_1_cached(B[m
+👍 [36mdone: test_cached_tasks_chain_from_root_to_child(B[m
+HEREDOC
+
   assert_mock_root_output_and_err test_tasks_chain_from_root_to_child_fails_in_child <<'HEREDOC'
 🚀 [34mdo: test_tasks_chain_from_root_to_child_fails_in_child(B[m
+❗️ [33mCalled uncached child task 'child_stack_1', should add it to task list in 'link_child_xfile' call(B[m
 🌚 [34min: test_tasks_chain_from_root_to_child_fails_in_child > [mock_child.sh] child_stack_1(B[m
 child_stack_1 start
 from test_tasks_chain_from_root_to_child_fails_in_child
@@ -526,6 +544,7 @@ started loaded_source_stack_3
 HEREDOC
 
   assert_mock_root_output_and_err test_tasks_chain_in_child <<'HEREDOC'
+❗️ [33mCalled uncached child task 'test_tasks_chain_in_child', should add it to task list in 'link_child_xfile' call(B[m
 🚀 [34mdo: [mock_child.sh] test_tasks_chain_in_child(B[m
 🌚 [34min: [mock_child.sh] test_tasks_chain_in_child > child_stack_1(B[m
 child_stack_1 start
@@ -541,6 +560,7 @@ child_stack_1 end without err
 HEREDOC
 
   assert_mock_root_output_and_err test_tasks_chain_in_child_fails <<'HEREDOC'
+❗️ [33mCalled uncached child task 'test_tasks_chain_in_child_fails', should add it to task list in 'link_child_xfile' call(B[m
 🚀 [34mdo: [mock_child.sh] test_tasks_chain_in_child_fails(B[m
 🌚 [34min: [mock_child.sh] test_tasks_chain_in_child_fails > child_stack_1(B[m
 child_stack_1 start
@@ -558,6 +578,7 @@ from child_stack_1
 HEREDOC
 
   assert_mock_root_output_and_err test_root_task_from_child_without_link_fails <<'HEREDOC'
+❗️ [33mCalled uncached child task 'test_root_task_from_child_without_link_fails', should add it to task list in 'link_child_xfile' call(B[m
 🚀 [34mdo: [mock_child.sh] test_root_task_from_child_without_link_fails(B[m
 ❌ [31m🤔 No task named: 'root_stack_2' in this Xfile or linked children!(B[m
 Maybe misspelled?
@@ -571,6 +592,7 @@ from test_root_task_from_child_without_link_fails
 HEREDOC
 
   assert_mock_root_output_and_err test_child_cannot_call_child_that_not_linked_directly <<'HEREDOC'
+❗️ [33mCalled uncached child task 'test_child_cannot_call_child_that_not_linked_directly', should add it to task list in 'link_child_xfile' call(B[m
 🚀 [34mdo: [mock_child_two.sh] test_child_cannot_call_child_that_not_linked_directly(B[m
 ❌ [31m🤔 No task named: 'child_stack_1' in this Xfile or linked children!(B[m
 Maybe misspelled?
@@ -584,7 +606,9 @@ from test_child_cannot_call_child_that_not_linked_directly
 HEREDOC
 
   assert_mock_root_output_and_err test_root_task_from_child <<'HEREDOC'
+❗️ [33mCalled uncached child task 'test_root_task_from_child', should add it to task list in 'link_child_xfile' call(B[m
 🚀 [34mdo: [mock_child_two.sh] test_root_task_from_child(B[m
+❗️ [33mCalled uncached child task 'root_stack_2', should add it to task list in 'link_child_xfile' call(B[m
 🌚 [34min: [mock_child_two.sh] test_root_task_from_child > [mock_root.sh] root_stack_2(B[m
 root_stack_2 start
 from test_root_task_from_child
@@ -631,7 +655,7 @@ HEREDOC
 }
 
 # - Note:
-# 1) tee may mix up lines, get err and out separately
+# 1) multiple tee may mix up lines, get err and out separately
 # 2) tasks inherit streams forwarding, so caller task tail is in the logs of child task
 function test_forward_out_and_err_to_dir() { ## Check how streams are being proxied
   local fails_count_before_this_tests=$TEST_FAILS_COUNT
@@ -725,20 +749,70 @@ HEREDOC
   log_success "forward_out_and_err_to_dir works as expected!"
 }
 
+function test_forward_out_and_err_to_dir_one_level() { ## Check how streams are being proxied
+  local fails_count_before_this_tests=$TEST_FAILS_COUNT
+
+  assert_mock_root_output test_forward_out_and_err_to_dir_one_level <<'HEREDOC'
+out 1 in test_forward_out_and_err_to_dir_one_level
+out in bar
+out 2 in test_forward_out_and_err_to_dir_one_level
+HEREDOC
+
+  assert_mock_root_err test_forward_out_and_err_to_dir_one_level <<'HEREDOC'
+🚀 [34mdo: test_forward_out_and_err_to_dir_one_level(B[m
+💁 [35mForwarding this shell (script/subshell) output and error streams(B[m
+- to: ./output/xfile_tests/forward_out_and_err_to_dir_one_level/main
+- called inside of 'test_forward_out_and_err_to_dir_one_level'
+started test_forward_out_and_err_to_dir_one_level
+in test_forward_out_and_err_to_dir_one_level
+🌚 [34min: test_forward_out_and_err_to_dir_one_level > bar(B[m
+in bar
+ended bar
+🌝 [36mout: test_forward_out_and_err_to_dir_one_level < bar(B[m
+in test_forward_out_and_err_to_dir_one_level after bar
+ended test_forward_out_and_err_to_dir_one_level
+👍 [36mdone: test_forward_out_and_err_to_dir_one_level(B[m
+HEREDOC
+
+  assert_cmd_output_and_err cat "$GIT_ROOT/output/xfile_tests/forward_out_and_err_to_dir_one_level/main/out.log" <<'HEREDOC'
+out 1 in test_forward_out_and_err_to_dir_one_level
+out in bar
+out 2 in test_forward_out_and_err_to_dir_one_level
+HEREDOC
+
+  assert_cmd_output_and_err cat "$GIT_ROOT/output/xfile_tests/forward_out_and_err_to_dir_one_level/main/err.log" <<'HEREDOC'
+started test_forward_out_and_err_to_dir_one_level
+in test_forward_out_and_err_to_dir_one_level
+🌚 [34min: test_forward_out_and_err_to_dir_one_level > bar(B[m
+in bar
+ended bar
+🌝 [36mout: test_forward_out_and_err_to_dir_one_level < bar(B[m
+in test_forward_out_and_err_to_dir_one_level after bar
+ended test_forward_out_and_err_to_dir_one_level
+👍 [36mdone: test_forward_out_and_err_to_dir_one_level(B[m
+HEREDOC
+
+  fail_if_new_assertions_has_failed || return $?
+
+  log_success "test_forward_out_and_err_to_dir_one_level works as expected!"
+}
+
+# - Note:
+# 1) multiple tee may mix up lines, get err and out separately
 function test_run_with_status_marker() { ## Check how streams are being proxied
   local fails_count_before_this_tests=$TEST_FAILS_COUNT
 
   assert_mock_root_output test_run_with_status_marker <<'HEREDOC'
-out 1 in test_forward_out_and_err_to_dir
+out 1 in test_run_with_status_marker
 out in foo
 out in bar
-out 2 in test_forward_out_and_err_to_dir
+out 2 in test_run_with_status_marker
 HEREDOC
 
   assert_mock_root_err test_run_with_status_marker <<'HEREDOC'
 🚀 [34mdo: test_run_with_status_marker(B[m
-started test_forward_out_and_err_to_dir
-in test_forward_out_and_err_to_dir
+started test_run_with_status_marker
+in test_run_with_status_marker
 💁 [35mForwarding output and error streams:(B[m
 - of: task bar
 - to: ./output/xfile_tests/test_run_with_status_marker/bar
@@ -754,8 +828,8 @@ in foo
 🌝 [36mout: test_run_with_status_marker > bar < foo(B[m
 in bar after foo
 🌝 [36mout: test_run_with_status_marker < bar(B[m
-in test_forward_out_and_err_to_dir after bar
-ended test_forward_out_and_err_to_dir
+in test_run_with_status_marker after bar
+ended test_run_with_status_marker
 👍 [36mdone: test_run_with_status_marker(B[m
 HEREDOC
 
@@ -790,7 +864,49 @@ HEREDOC
 
   fail_if_new_assertions_has_failed || return $?
 
-  log_success "forward_out_and_err_to_dir works as expected!"
+  log_success "test_run_with_status_marker works as expected!"
+}
+
+function test_run_with_status_marker_one_level() { ## Check how streams are being proxied
+  local fails_count_before_this_tests=$TEST_FAILS_COUNT
+
+  assert_mock_root_output test_run_with_status_marker_one_level <<'HEREDOC'
+out 1 in test_run_with_status_marker_one_level
+out in bar
+out 2 in test_run_with_status_marker_one_level
+HEREDOC
+
+  assert_mock_root_err test_run_with_status_marker_one_level <<'HEREDOC'
+🚀 [34mdo: test_run_with_status_marker_one_level(B[m
+started test_run_with_status_marker_one_level
+in test_run_with_status_marker_one_level
+💁 [35mForwarding output and error streams:(B[m
+- of: task bar
+- to: ./output/xfile_tests/test_run_with_status_marker_one_level/bar
+💁 [35mWill create 'success' file in forwarding dir, unless command fails(B[m
+🌚 [34min: test_run_with_status_marker_one_level > bar(B[m
+in bar
+ended bar
+🌝 [36mout: test_run_with_status_marker_one_level < bar(B[m
+in test_run_with_status_marker_one_level after bar
+ended test_run_with_status_marker_one_level
+👍 [36mdone: test_run_with_status_marker_one_level(B[m
+HEREDOC
+
+  assert_cmd_output_and_err cat "$GIT_ROOT/output/xfile_tests/test_run_with_status_marker_one_level/bar/out.log" <<'HEREDOC'
+out in bar
+HEREDOC
+
+  assert_cmd_output_and_err cat "$GIT_ROOT/output/xfile_tests/test_run_with_status_marker_one_level/bar/err.log" <<'HEREDOC'
+🌚 [34min: test_run_with_status_marker_one_level > bar(B[m
+in bar
+ended bar
+🌝 [36mout: test_run_with_status_marker_one_level < bar(B[m
+HEREDOC
+
+  fail_if_new_assertions_has_failed || return $?
+
+  log_success "test_run_with_status_marker_one_level works as expected!"
 }
 
 begin_xfile_task
