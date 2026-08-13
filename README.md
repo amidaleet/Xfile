@@ -4,29 +4,28 @@ Simple `bash` template for repository scripts: tasks, args, help and shell compl
 
 ![logo](assets/logo.png)
 
-- [Xfile](#xfile-bash-task-runner-makefile-alternative)
-  - [Motivation](#motivation)
-    - [Naming](#naming)
-    - [Links](#links)
-  - [Repo content](#repo-content)
-  - [Install Xfile](#install-xfile)
-    - [Xfile template](#xfile-template)
-    - [Upgrade](#upgrade)
-    - [Interactive shell (alias and autocomplete)](#interactive-shell-alias-and-autocomplete)
-    - [Non-interactive shell](#non-interactive-shell)
-  - [Use Xfile](#use-xfile)
-    - [Task](#task)
-    - [Arguments](#arguments)
-    - [Help](#help)
-  - [Write Xfile](#write-xfile)
-    - [Xfile structure](#xfile-structure)
-    - [Declare task](#declare-task)
-    - [Read arguments](#read-arguments)
-    - [Use ENV](#use-env)
-      - [Credentials](#credentials)
-    - [Task visibility](#task-visibility)
-      - [Load tasks from source](#load-tasks-from-source)
-      - [Link children](#link-children)
+- [Motivation](#motivation)
+  - [Naming](#naming)
+  - [Links](#links)
+- [Repo content](#repo-content)
+- [Install Xfile](#install-xfile)
+  - [Xfile template](#xfile-template)
+  - [Upgrade](#upgrade)
+  - [Interactive shell (alias and autocomplete)](#interactive-shell-alias-and-autocomplete)
+  - [Non-interactive shell](#non-interactive-shell)
+- [Use Xfile](#use-xfile)
+  - [Task](#task)
+  - [Arguments](#arguments)
+  - [Help](#help)
+- [Write Xfile](#write-xfile)
+  - [Xfile structure](#xfile-structure)
+  - [Declare task](#declare-task)
+  - [Read arguments](#read-arguments)
+  - [Use ENV](#use-env)
+    - [Credentials](#credentials)
+  - [Task visibility](#task-visibility)
+    - [Load tasks from source](#load-tasks-from-source)
+    - [Link children](#link-children)
 
 ## Motivation
 
@@ -75,12 +74,14 @@ Whole required Xfile implementation located in a `./Xfile_source`:
   - template.sh – sample Xfile with minimum code for quick start from scratch
   - tests/tests.sh – tasks for `impl.sh` and `xlib.sh` testing
 
-Sample code:
-  - Xfile – task declaration examples
-  - tools/hooks/ – git hooks (LFS, pre-commit, prepare-commit-msg)
-  - tools/sh/ – bash scripts, Xfile children and sources (git, brew, ruby, jenkins, Xcode, iOS runtime tasks samples)
-  - tools/swift/ – swift scripts
-  - fastlane/ – ruby and fastlane scripts
+`./Xfile` in this repository is the library's own file (template + `test_xfile` + release tasks).
+
+iOS / CI sample as a **demo consumer repo**: `examples/ios/`. `GIT_ROOT` is that directory (`Xfile_source` is a symlink to the library). Run from there:
+
+```sh
+cd examples/ios
+./Xfile help
+```
 
 ## Install Xfile
 
