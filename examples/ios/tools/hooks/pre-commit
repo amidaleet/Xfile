@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+
+set -eo pipefail
+
+FLAGS=''
+if ps -ocommand= -p "$PPID" | grep -q -e '--amend'; then
+  FLAGS="--amend"
+fi
+
+# Git runs hooks with cwd = clone root. This demo lives in examples/ios/.
+_DEMO_ROOT=$(cd "$(dirname "$0")/../.." && pwd)
+"$_DEMO_ROOT/Xfile" pre_commit ${FLAGS:+"$FLAGS"}

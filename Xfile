@@ -7,274 +7,30 @@ if [ -z "${_OUTPUT_LINE_BUFFERED:-}" ]; then
   if command -v stdbuf >/dev/null; then exec stdbuf -oL -eL "$0" "$@"; fi
 fi
 
-GIT_ROOT=${GIT_ROOT:-"${PWD:-"$(pwd)"}"}
-export GIT_ROOT
-export SCRIPTS_FOLDER="$GIT_ROOT/tools/sh"
+export GIT_ROOT=${GIT_ROOT:-"${PWD:-"$(pwd)"}"}
+export OUTPUT_DIR="$GIT_ROOT/output"
 
 source "$GIT_ROOT/Xfile_source/impl.sh"
 
-export IS_CI=false
-if var_is_true CI; then
-  IS_CI=true
-fi
-
-export FASTLANE_SKIP_UPDATE_CHECK=1
-export FASTLANE_HIDE_CHANGELOG=1
-export FASTLANE_XCODEBUILD_SETTINGS_TIMEOUT=120
-
-export OUTPUT_DIR="$GIT_ROOT/output"
-TOOLS_DIR="$GIT_ROOT/tools"
-RUBY_SCRIPTS_DIR="$GIT_ROOT/fastlane/scripts"
-SWIFT_SCRIPTS_DIR="$TOOLS_DIR/swift/scripts"
-GIT_HOOKS_DIR="$TOOLS_DIR/hooks"
-
-# iOS Simulator Configuration
-export XCODE_VERSION='16.4'
-export IOS_SIMULATOR_DEVICE_TYPE='iPhone 16'
-export IOS_SIMULATOR_RUNTIME_VERSION='18.5'
-
-export LC_ALL='en_US.UTF-8'
-export LANG='en_US.UTF-8'
-
-load_source "$SCRIPTS_FOLDER/git_x.sh"
-load_source "$SCRIPTS_FOLDER/ruby_x.sh"
-load_optional_source "$GIT_ROOT/usr/xprofile"
-
-link_child_xfile "$SCRIPTS_FOLDER/brew_x.sh" '' brew:install_brew_native brew:install_deps
-link_child_xfile "$SCRIPTS_FOLDER/Xcode_x.sh" '' xcode:install xcode:set_header xcode:remove_derived_data xcode:patch_3rd_party_deps_for_arm64_simulator
-link_child_xfile "$SCRIPTS_FOLDER/ios_runtime_x.sh" '' ios_runtime:install ios_runtime:fix_missing
-link_child_xfile "$SCRIPTS_FOLDER/jenkins_x.sh" '' jenkins_sync_jobs
 link_child_xfile "$GIT_ROOT/Xfile_source/tests/tests.sh" '' test_xfile
 
-# ---------- Setup ----------
-
-function install_deps { ## Install required dependencies for development
-  task brew:install_deps
-  task install_python
-  task install_ruby
-  task gems_install
-  task install_spm_deps
-}
-
-function install_ruby { ## Install Ruby version from .ruby-version file
-  local ruby_version=$(get_ruby_repository_version)
-  task ruby_lang_installer --version "$ruby_version" --skip-existing
-}
-
-function install_python { ## Install Python version from .python-version file
-  pyenv install --skip-existing
-}
-
-function install_spm_deps { ## Install Swift dependencies from Mintfile
-  mint bootstrap
-}
-
-function setup { ## Prepare environment for development
-  task setup_git
-  task install_deps
-
-  log_success "Setup finished!"
-}
-
-# ---------- Xcode ----------
-
-function remove_ios_simulators { ## Remove all iOS simulators from Xcode
-  log '🧹  Will remove all iOS Simulators'
-  xcrun simctl delete all
-  log '🗑️  Removed all iOS Simulators'
-}
-
-function localize_device_to_ru { ## Localize iOS simulator to Russian using template plist
-  local device_udid
-  read_opt --device_udid device_udid
-  assert_defined device_udid
-
-  local device_home="$HOME/Library/Developer/CoreSimulator/Devices/${device_udid}"
-  local global_prefs_plist="$device_home/data/Library/Preferences/.GlobalPreferences.plist"
-  local template_plist="$GIT_ROOT/templates/simulator/GlobalPreferences.plist"
-
-  mkdir -p "$(dirname "$global_prefs_plist")"
-  cp -f "$template_plist" "$global_prefs_plist"
-
-  log "🇷🇺 Set language and locale for simulator ${device_udid}"
-}
-
-function add_ios_simulator_for_tests { ## Add iOS device simulator for Monorepo tests in Workspace
-  local device_name="Xcode ${XCODE_VERSION}, iOS ${IOS_SIMULATOR_RUNTIME_VERSION}"
-  local device_type_id="com.apple.CoreSimulator.SimDeviceType.${IOS_SIMULATOR_DEVICE_TYPE// /-}"
-  local runtime_id="com.apple.CoreSimulator.SimRuntime.iOS-${IOS_SIMULATOR_RUNTIME_VERSION//\./-}"
-
-  log_next "Will try create device:" \
-    "- runtime_id: $runtime_id" \
-    "- device_type_id: $device_type_id" \
-    "- name: $device_name"
-
-  local device_udid
-  device_udid=$(xcrun simctl create "${device_name}" "${device_type_id}" "${runtime_id}")
-
-  task localize_device_to_ru --device_udid "$device_udid"
-
-  defaults write com.apple.dt.Xcode DVTDeviceVisibilityPreferences -dict-add "${device_udid}" -int 1
-  log "👁️  Made '${device_name}' always visible in Xcode dropdown menu"
-
-  log_success "iOS Simulator for tests run to your Xcode, name: ${device_name}, udid: ${device_udid}"
-}
-
-function print_swift_test_results_json_for_analytics_event { ## Find test case total, fails and skips in logs Xcode test scheme run logs (out: json)
-  task ruby_run "$RUBY_SCRIPTS_DIR/grep_swift_test_results.rb" \
-    p_"$OUTPUT_DIR/test_pretty_logs/swift_tools_tests/out.log" \
-    f_"$OUTPUT_DIR/test_pretty_logs/unit_tests/out.log" \
-    f_"$OUTPUT_DIR/test_pretty_logs/snapshot_tests/out.log" \
-    f_"$OUTPUT_DIR/test_pretty_logs/ui_tests/out.log" \
-    f_"$OUTPUT_DIR/test_pretty_logs/performance_tests/out.log" \
-    f_"$OUTPUT_DIR/test_pretty_logs/ui_essential_tests/out.log" \
-    f_"$OUTPUT_DIR/test_pretty_logs/impact_tests/out.log"
-}
-
-function print_swift_errors_for_mattermost { ## Find test case total, fails and skips in logs Xcode test scheme run logs (out: Mattermost markdown)
-  task ruby_run "$RUBY_SCRIPTS_DIR/grep_swift_errors.rb" \
-    p_"$OUTPUT_DIR/test_pretty_logs/swift_tools_tests/err.log" \
-    p_"$OUTPUT_DIR/test_pretty_logs/swift_tools_tests/out.log" \
-    p_"$OUTPUT_DIR/test_pretty_logs/unit_tests/out.log" \
-    p_"$OUTPUT_DIR/test_pretty_logs/snapshot_tests/out.log" \
-    p_"$OUTPUT_DIR/test_pretty_logs/ui_tests/out.log" \
-    p_"$OUTPUT_DIR/test_pretty_logs/performance_tests/out.log" \
-    p_"$OUTPUT_DIR/test_pretty_logs/ui_essential_tests/out.log" \
-    p_"$OUTPUT_DIR/test_pretty_logs/impact_tests/out.log" \
-    "$1"
-}
-
-# ---------- Tools ----------
-
-function test_tools { ## Run all tools unit tests
-  task test_xfile
-  task test_fastlane_tools
-}
-
-function test_fastlane_tools { ## Run fastlane unit tests
-  ruby_bundle exec rspec --pattern "fastlane/{**}/*_spec.rb"
-}
-
-# ---------- Lint & Format ----------
-
-function format { ## Format modified files
-  task format_swift
-  task format_ruby
-}
-
-function format_swift { ## Format modified .swift files
-  local filesArr=() file
-
-  for file in $(git diff --cached --name-only --diff-filter=ACM -- '*.swift'); do
-    filesArr+=("$file")
-  done
-
-  if [[ "${#filesArr[@]}" -eq 0 ]]; then
-    log "No .swift files to format"
-    return
-  fi
-
-  mint run nicklockwood/SwiftFormat@0.53.4 \
-    --config "$GIT_ROOT/.swiftformat.config" \
-    --swiftversion "5.9" \
-    "${filesArr[@]}"
-}
-
-function format_ruby { ## Format .rb files
-  log_info "🚧 Format ruby with rubocop"
-  ruby_bundle exec rubocop -a --format simple
-  log "✅ rubocop finished without offenses 🚧"
-}
-
-function lint {
-  task lint_swift
-  task lint_ruby
-}
-
-function lint_swift { ## Lint modified .swift files
-  local filesArr=() file
-
-  for file in $(git diff --cached --name-only --diff-filter=ACM -- '*.swift'); do
-    filesArr+=("$file")
-  done
-
-  if [[ "${#filesArr[@]}" -eq 0 ]]; then
-    log "No .swift files to lint"
-    return
-  fi
-
-  mint run realm/SwiftLint@0.54.0 lint \
-    --config "$GIT_ROOT/.swiftlint.yml" \
-    "${filesArr[@]}"
-}
-
-function lint_ruby { ## Lint all Ruby files
-  ruby_bundle exec rubocop --lint
-}
-
-# ---------- Agent information ----------
-
-function get_os_name {
-  case "$(uname)" in
-    'Linux') echo "linux" ;;
-    'Darwin') echo "macOS" ;;
-    *) echo "unknown" ;;
-  esac
-}
-
-function get_os_version {
-  if [ -f /etc/os-release ]; then
-    source /etc/os-release
-    echo "$VERSION_ID"
-  else
-    sw_vers -productVersion
-  fi
-}
+# ---------- Xfile development ----------
 
 function bash_version { ## log bash version (which runs Xfile)
   puts "$BASH_VERSION"
 }
 
-# ---------- Xfile development ----------
+function reset_git_hooks { ## Unset local core.hooksPath (clears examples/ios demo hooks)
+  local current
+  current=$(git config --local --get core.hooksPath || echo '<not specified in config>')
+  log_info "core.hooksPath git config state:" \
+    "- In local config:" "$current"
 
-function release_deploy {
-  assert_semver "$1"
-
-  task release_bump_ref_in_setup "$1"
-  task release_zip_source_dir
-
-  log_next "Will commit to and push release branch"
-  task release_make_branch_if_major "$1"
-  git add .
-  git commit
-  git push
-
-  log_next "Will make and push $1 tag"
-  git tag "$1"
-  git push origin "$1"
-
-  log_success "Pushed release $1"
-  log_info "Should publish Github 'Release' manually"
-}
-
-function release_make_branch_if_major {
-  assert_semver "$1"
-  local current_branch release_branch_name
-  current_branch=$(git branch --show-current)
-  release_branch_name="release/${1%%.*}"
-
-  if [ "${1#*.}" != '0.0' ]; then
-    log_note "$1 is not a major release"
-    if [ "$current_branch" != "$release_branch_name" ]; then
-      log_error "Expected to be on existing $release_branch_name, but got:" "$current_branch"
-      return 9
-    fi
-    log_next "Won't create new branch, will update current:" "$release_branch_name"
-    return
+  if git config --local --unset-all core.hooksPath 2>/dev/null; then
+    log_success "Removed local core.hooksPath"
+  else
+    log_note "hooksPath is already absent from local config"
   fi
-
-  log_next "Will create and checkout $release_branch_name branch"
-  git checkout -b "$release_branch_name"
 }
 
 function release_bump_ref_in_setup {
@@ -290,6 +46,7 @@ function release_bump_ref_in_setup {
 function release_zip_source_dir {
   log_next "Will zip ./Xfile_source to $OUTPUT_DIR/Xfile_source.zip"
 
+  mkdir -p "$OUTPUT_DIR"
   zip -r "$OUTPUT_DIR/Xfile_source.zip" ./Xfile_source
 }
 
