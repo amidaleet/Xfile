@@ -11,6 +11,7 @@ Simple `bash` template for efficient scripting.
   - [Repo content](#repo-content)
   - [Install Xfile](#install-xfile)
     - [Xfile template](#xfile-template)
+    - [Upgrade](#upgrade)
     - [Interactive shell (alias and autocomplete)](#interactive-shell-alias-and-autocomplete)
     - [Non-interactive shell](#non-interactive-shell)
   - [Use Xfile](#use-xfile)
@@ -87,15 +88,27 @@ Sample code:
 
 For fresh start in your repository run script:
 ```sh
-(export XFILE_REF='7.1.0'; bash <<<$(curl -fsSL "https://raw.githubusercontent.com/amidaleet/Xfile/${XFILE_REF}/Xfile_source/setup.sh"))
+(export XFILE_REF='7.1.1'; bash <<<$(curl -fsSL "https://raw.githubusercontent.com/amidaleet/Xfile/${XFILE_REF}/Xfile_source/setup.sh"))
 ```
 
-Or you can clone this **this** repository and call command from it's root dir.
+Or you can clone this repository and call command from it's root dir.
 ```sh
-git clone git@github.com:amidaleet/Xfile.git ./Xfile # clone repo
-cd Xfile # move to this repo root
-./Xfile xfile_init_copy "$HOME/Developer/my-repository" # create Xfile from template and copy Xfile_source to provided directory
+git clone git@github.com:amidaleet/Xfile.git ./Xfile-repo # clone repo (avoid naming the dir `Xfile` — that is also the executable)
+cd Xfile-repo # move to this repo root
+./Xfile xfile_init_copy "$HOME/Developer/my-repository" # `./Xfile` is the executable; copies template + Xfile_source to the provided directory
 ```
+
+### Upgrade
+
+To bump an existing install (for example 7.0.1 → 7.1.1):
+
+```sh
+./Xfile xfile_init_load "$PWD" 7.1.1
+```
+
+Or re-run the [install one-liner](#xfile-template) (`XFILE_REF='7.1.1'`). `setup.sh` defaults to newest version.
+
+`xfile_init_load` refreshes `Xfile_source`; it does not overwrite an existing `./Xfile`.
 
 ### Interactive shell (alias and autocomplete)
 
@@ -234,15 +247,17 @@ Each function can be executed as:
 
 `Xfile` is designed to work with `errexit` option (`set -e`).
 
-Sample template with commentary:
+Sample template with commentary (`Xfile_source/template.sh`):
 ```sh
 #!/usr/bin/env bash # 👀 Tells shell to which binary this file have to be send for interpretation
 
-set -eo pipefail # 👀 Recommended bash options, can be customized
+set -eo pipefail # 👀 Recommended bash options; `set -euo pipefail` is fine (`impl.sh` / `xlib.sh` are `set -u` safe)
 
-source "Xfile_source/impl.sh" # 👀 'Copies' implementation script to Xfile body
+export GIT_ROOT=${GIT_ROOT:-"${PWD:-"$(pwd)"}"} # 👀 Must be set *before* `source`: impl.sh loads `$GIT_ROOT/Xfile_source/xlib.sh`
 
-export GIT_ROOT=${GIT_ROOT:-"${PWD:-"$(pwd)"}"} # 👀 ENV and process values setting may be placed anywhere
+source "$GIT_ROOT/Xfile_source/impl.sh" # 👀 'Copies' implementation script to Xfile body
+
+# Other ENV may be set after source.
 
 # ---------- Block ---------- # 👀 Splits tasks in help
 
@@ -263,6 +278,8 @@ function any_task_you_want_to_add { ## 👀 One line note about task meaning
   if read_flags --flag; then log true; fi
   # 👀 ^^^ helper functions from xlib
 }
+
+link_child_xfile "$GIT_ROOT/Xfile_source/tests/tests.sh" '' test_xfile # 👀 $1 abs path; empty $2 if you only pass task-name cache ($3…)
 
 begin_xfile_task # 👀 Starts input handling, calls task specified in script args
 ```
@@ -368,12 +385,12 @@ Terminal calls:
 x install_ios_runtime VERSION=17.2 COOKIE='123456...'
 ```
 
-Args can be getopts-styled (--name + space + valuer string).
+Args can be getopts-styled (--name + space + value string).
 ```sh
 function jenkins_job_get_script {
   local job_name
   read_opt -n --name job_name # 👀 Search for both long and short form
-  assert_defined job_name jenkins_creds # 👀 Check if required values is ether in parsed args or ENV
+  assert_defined job_name jenkins_creds # 👀 Check if required values is either in parsed args or ENV
 
   log_info "Loading script for $job_name"
 
@@ -394,6 +411,22 @@ Terminal calls:
  export X_JENKINS_JOB_LIST_URL='example.com'
 x jenkins_job_get_script --name 'Debug Job'
 unset jenkins_creds; unset X_JENKINS_JOB_LIST_URL
+```
+
+Args can be read as an array (`read_arr $opt $arr_name [$separator]`). Default separator is space.
+
+```sh
+function sync_branches {
+  local BRANCHES=()
+  read_arr --branches BRANCHES # 👀 next arg after `--branches`, split on spaces
+  # read_arr --branches BRANCHES ':'  # 👀 optional $3 – element separator (`:` or `$'\n'`)
+}
+```
+
+Terminal calls:
+
+```sh
+x sync_branches --branches "main release/1.2.0 release/1.0.0"
 ```
 
 Args can be used as flags (check if provided or not).
@@ -430,12 +463,22 @@ You can export values to executed processes and commands.
 
 ```sh
 export GIT_ROOT=${GIT_ROOT:-"${PWD:-"$(pwd)"}"} # visible in sub-processes
-SCRIPTS_FOLDER="tools/sh" # visible in the Xfile scope only
+SCRIPTS_FOLDER="$GIT_ROOT/tools/sh" # visible in the Xfile scope only; absolute – required by `load_source` / `link_child_xfile`
 
 function rubocop {
   "$SCRIPTS_FOLDER/rubocopw.sh" "$@"
-  # rubocopw.sh code can reed GIT_ROOT but not SCRIPTS_FOLDER
+  # rubocopw.sh code can read GIT_ROOT but not SCRIPTS_FOLDER
 }
+```
+
+`impl.sh` / `xlib.sh` run under `set -u`. Optional ENV must not be expanded raw: use `${var-}` and `var_is_true`.
+
+```sh
+if var_is_true CI; then # 👀 true / 1 / yes / YES / TRUE; unset or empty is false (nounset-safe)
+  IS_CI=true
+fi
+
+optional=${OPTIONAL_FLAG-} # 👀 empty string if unset – do not use `$OPTIONAL_FLAG` under `set -u`
 ```
 
 #### Credentials
@@ -504,6 +547,8 @@ Task functions can be declared in a separate file and inlined in runtime inside 
 
 However it is better to use `load_source` helper, in order to gain Xfile built-in 'help'-related Xfile logic for free.
 
+`load_source` and `load_optional_source` require an **absolute** path (`assert_abs_path`). Relative `"Xfile_source/..."` will fail.
+
 `load_optional_source` may be handy for optional user-defined tasks file.
 
 ```sh
@@ -516,24 +561,28 @@ load_optional_source "$GIT_ROOT/usr/xprofile" # may not exist, developer's local
 
 #### Link children
 
-Instead of sourcing all the Xfiles as parts in your main Xfile, it may be convenient to incapsulate complex logic in separate Xfile – child.
+Instead of sourcing all the Xfiles as parts in your main Xfile, it may be convenient to encapsulate complex logic in separate Xfile – child.
 
-Thats prevents scope pollution – child may declare "local" helper functions with short names without worries about re-declaration of main Xfile tasks.
+That prevents scope pollution – child may declare "local" helper functions with short names without worries about re-declaration of main Xfile tasks.
 
 However be aware of next performance concern: task call has O(N) dispatch complexity (N - linked children count) and results a new process spawn, which is far more costly than simple local task call (which is function call, O(1) dispatch complexity).
 
-Child can be 'linked' with:
+Child can be 'linked' with (`$1` must be an absolute path):
 
 ```sh
 # in ./Xfile
 
-link_child_xfile "$GIT_ROOT/Xfile_source/tests.sh"
+link_child_xfile "$GIT_ROOT/Xfile_source/tests/tests.sh" '' test_xfile # 👀 $2 prefix (empty here), $3… cached child task names
+link_child_xfile "$GIT_ROOT/Xfile_source/tests/child_one.sh" one: # 👀 optional $2 – task name prefix (`x one:child_one_task`)
 ```
+
+Prefix example lives in `Xfile_source/tests/link_root.sh`. Empty `$2` (`''`) is required when you only pass the task-name cache.
 
 'Linked' tasks from children can be invoked from linked Xfile (like other tasks that declared inside Xfile).
 
 ```sh
-./Xfile test_xfile # task from "$GIT_ROOT/Xfile_source/tests.sh" file
+./Xfile test_xfile # task from "$GIT_ROOT/Xfile_source/tests/tests.sh"
+./Xfile one:child_one_task # prefixed child task
 ```
 
 Or in a Xfile task's code.
