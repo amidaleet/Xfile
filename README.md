@@ -87,9 +87,12 @@ cd examples/ios
 
 ### Xfile template
 
-For fresh start in your repository run script:
+For fresh start in your repository, download `setup.sh`, inspect it, then run:
 ```sh
-(export XFILE_REF='7.1.1'; bash <<<$(curl -fsSL "https://raw.githubusercontent.com/amidaleet/Xfile/${XFILE_REF}/Xfile_source/setup.sh"))
+curl -fsSL "https://raw.githubusercontent.com/amidaleet/Xfile/7.1.1/Xfile_source/setup.sh" -o setup.sh
+chmod +x setup.sh
+XFILE_REF='7.1.1' ./setup.sh
+rm -f setup.sh
 ```
 
 Or you can clone this repository and call command from it's root dir.
@@ -107,7 +110,7 @@ To bump an existing install (for example 7.0.1 → 7.1.1):
 ./Xfile xfile_init_load "$PWD" 7.1.1
 ```
 
-Or re-run the [install one-liner](#xfile-template) (`XFILE_REF='7.1.1'`). `setup.sh` defaults to newest version.
+Or re-run the [install steps](#xfile-template) (`XFILE_REF='7.1.1'`). `setup.sh` defaults to newest version.
 
 `xfile_init_load` refreshes `Xfile_source`; it does not overwrite an existing `./Xfile`.
 

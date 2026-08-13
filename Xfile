@@ -33,14 +33,23 @@ function reset_git_hooks { ## Unset local core.hooksPath (clears examples/ios de
   fi
 }
 
-function release_bump_ref_in_setup {
+function release_bump_ref_in_setup { ## Pin release version in setup.sh, impl.sh, README.md, docs/
   assert_semver "$1"
 
-  log_next "Will change version in:" Xfile_source/setup.sh Xfile_source/impl.sh README.md
+  local new=$1 current current_re
+  current=$(sed -nE 's/^XFILE_REF=\$\{XFILE_REF:-([0-9]+\.[0-9]+\.[0-9]+)\}$/\1/p' ./Xfile_source/setup.sh)
+  assert_semver "$current"
+  current_re=${current//./\\.}
 
-  sed -i '' "s/{XFILE_REF:-.*}/{XFILE_REF:-$1}/1" ./Xfile_source/setup.sh
-  sed -i '' "s#XFILE_REF=\${2:-.*}#XFILE_REF=\${2:-$1}#1" ./Xfile_source/impl.sh
-  sed -i '' "s/XFILE_REF='.*'/XFILE_REF='$1'/1" ./README.md
+  log_next "Will bump $current → $new in:" \
+    Xfile_source/setup.sh \
+    Xfile_source/impl.sh \
+    README.md \
+    docs/index.html
+
+  sed -i '' "s/{XFILE_REF:-$current_re}/{XFILE_REF:-$new}/" ./Xfile_source/setup.sh
+  sed -i '' "s#XFILE_REF=\${2:-$current_re}#XFILE_REF=\${2:-$new}#" ./Xfile_source/impl.sh
+  sed -i '' "s/$current_re/$new/g" ./README.md ./docs/index.html
 }
 
 function release_zip_source_dir {
