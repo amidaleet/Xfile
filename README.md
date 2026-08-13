@@ -1,10 +1,10 @@
-# Xfile
+# Xfile — bash task runner (Makefile alternative)
 
-Simple `bash` template for efficient scripting.
+Simple `bash` template for repository scripts: tasks, args, help and shell completion. A Makefile alternative, not a YAML Taskfile.
 
 ![logo](assets/logo.png)
 
-- [Xfile](#xfile)
+- [Xfile](#xfile-bash-task-runner-makefile-alternative)
   - [Motivation](#motivation)
     - [Naming](#naming)
     - [Links](#links)
