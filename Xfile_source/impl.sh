@@ -540,7 +540,7 @@ function xfile_init_load() { ## load sources and Xfile sample to $1 dir from $2 
 
   local caller_dir=$PWD
   cd "$1" || return $?
-  export XFILE_REF=${2:-7.1.0}
+  export XFILE_REF=${2:-7.1.1}
 
   process try_load_xfile_from_release_archive || process try_load_xfile_from_ref || {
     log_error "Failed to install Xfile $XFILE_REF to:" "$1"
