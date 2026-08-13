@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <!-- Google Search Console: paste HTML verification meta tag here -->
+  <title>Xfile — bash task runner (Makefile alternative)</title>
+  <meta name="description" content="Bash template for repository scripts: tasks, args, help and shell completion. A Makefile alternative, not a YAML Taskfile.">
+  <link rel="canonical" href="https://amidaleet.github.io/Xfile/">
+  <meta property="og:title" content="Xfile — bash task runner (Makefile alternative)">
+  <meta property="og:description" content="One Xfile for repo scripts: tasks, args, help, and shell completion. Makefile alternative, not a YAML Taskfile.">
+  <meta property="og:url" content="https://amidaleet.github.io/Xfile/">
+  <meta property="og:image" content="https://amidaleet.github.io/Xfile/assets/logo.png">
+  <meta property="og:type" content="website">
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #071108;
+      --fg: #c8e6c4;
+      --dim: #7a9a76;
+      --acc: #6fdf6a;
+      --line: #1c331c;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; }
+    body {
+      font: 16px/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      background: var(--bg);
+      color: var(--fg);
+    }
+    main {
+      max-width: 54rem;
+      margin: 0 auto;
+      padding: 2.5rem 1.25rem 4rem;
+    }
+    img.logo {
+      display: block;
+      width: min(100%, 840px);
+      height: auto;
+      margin: 0 auto 1.5rem;
+      border: 1px solid var(--line);
+    }
+    h1 {
+      font-size: 1.15rem;
+      font-weight: 700;
+      line-height: 1.35;
+      margin: 0 0 0.75rem;
+    }
+    p { margin: 0 0 1rem; }
+    .dim { color: var(--dim); }
+    a { color: var(--acc); }
+    pre {
+      margin: 1rem 0 1.5rem;
+      padding: 0.85rem 1rem;
+      overflow-x: auto;
+      border: 1px solid var(--line);
+      background: #050c06;
+      color: var(--acc);
+    }
+    code { font: inherit; }
+    nav { margin-top: 1.5rem; }
+    nav a { margin-right: 1.25rem; }
+  </style>
+</head>
+<body>
+  <main>
+    <img class="logo" src="assets/logo.png" width="840" height="472" alt="Terminal: rm Makefile, then ./Xfile do_the_job">
+    <h1>Xfile — bash task runner (Makefile alternative)</h1>
+    <p>Simple <code>bash</code> template for repository scripts: tasks, args, help and shell completion. A Makefile alternative, not a YAML Taskfile.</p>
+    <p class="dim">Why run <code>bash → Makefile → bash</code>, if just <code>bash</code> is possible?</p>
+    <p>Install into a repo:</p>
+    <pre><code>curl -fsSL "https://raw.githubusercontent.com/amidaleet/Xfile/7.1.1/Xfile_source/setup.sh" -o setup.sh
+chmod +x setup.sh
+XFILE_REF='7.1.1' ./setup.sh
+rm -f setup.sh</code></pre>
+    <nav>
+      <a href="https://github.com/amidaleet/Xfile">GitHub</a>
+      <a href="https://github.com/amidaleet/Xfile#readme">README</a>
+      <a href="https://github.com/amidaleet/Xfile/releases/tag/7.1.1">7.1.1</a>
+    </nav>
+  </main>
+</body>
+</html>
