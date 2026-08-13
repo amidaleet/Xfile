@@ -99,29 +99,6 @@ function test_run_with_status_marker {
   log 'ended test_run_with_status_marker'
 }
 
-function test_run_with_status_marker_one_level {
-  # shellcheck disable=SC2329
-  function bar {
-    log 'in bar'
-    puts 'out in bar'
-    log 'ended bar'
-  }
-
-  log 'started test_run_with_status_marker_one_level'
-
-  log 'in test_run_with_status_marker_one_level'
-
-  puts 'out 1 in test_run_with_status_marker_one_level'
-  run_with_status_marker "$GIT_ROOT/output/xfile_tests/test_run_with_status_marker_one_level/bar" \
-    task bar
-  puts 'out 2 in test_run_with_status_marker_one_level'
-
-  log 'in test_run_with_status_marker_one_level after bar'
-
-  unset bar
-  log 'ended test_run_with_status_marker_one_level'
-}
-
 function test_tasks_chain_from_root_to_child {
   task child_stack_1 'from test_tasks_chain_from_root_to_child'
 }
@@ -171,7 +148,7 @@ root_stack_1() {
 root_stack_2() {
   log "root_stack_2 start" "$@"
 
-  if [ -n "$MOCKED_END_CODE" ]; then
+  if [ -n "${MOCKED_END_CODE-}" ]; then
     return_code "$MOCKED_END_CODE"
   fi
 

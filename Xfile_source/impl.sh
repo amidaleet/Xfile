@@ -60,11 +60,13 @@ show_task_names_from() { ## print task names list from $1 file, $2 – optional 
   done <<<"$func_decl_first_lines"
 }
 
+# shellcheck disable=SC2120 # optional args for help formatting; callers pass 0–2 args
 show_tasks() { ## $1 – header override (may be empty), $2 – tasks prefix
-  show_tasks_from "$THIS_XFILE_PATH" "$1" "$2"
-  show_tasks_from_loaded_sources "$1" "$2"
+  local header=${1-} prefix=${2-}
+  show_tasks_from "$THIS_XFILE_PATH" "$header" "$prefix"
+  show_tasks_from_loaded_sources "$header" "$prefix"
   if this_xfile_is_root; then
-    show_tasks_from_linked_children "$2"
+    show_tasks_from_linked_children "$prefix"
   fi
 }
 
@@ -74,10 +76,10 @@ show_tasks_from() { ## print task descriptions list from $1 file, $2 – header 
     return
   fi
 
-  if [ -n "$2" ]; then
+  if [ -n "${2-}" ]; then
     printf "\e[34m# %s\e(B\e[m\n" "$2"
   else
-    printf "\e[34m# %s tasks:\e(B\e[m\n" "${1##"$GIT_ROOT/"}"
+    printf "\e[34m# %s tasks:\e(B\e[m\n" "${1##"${GIT_ROOT-}/"}"
   fi
 
   local marks_and_func_first_lines
@@ -88,7 +90,7 @@ show_tasks_from() { ## print task descriptions list from $1 file, $2 – header 
     return 0
   fi
 
-  local line func_name func_description
+  local line func_name= func_description=
   while IFS= read -r line; do
     if [[ "$line" == '# ----------'* ]]; then
       line=${line#'# ---------- '}
@@ -104,7 +106,7 @@ show_tasks_from() { ## print task descriptions list from $1 file, $2 – header 
       else
         func_description=''
       fi
-      printf "  \033[93m%-48s\033[92m %s\033[0m\n" "$3$func_name" "$func_description"
+      printf "  \033[93m%-48s\033[92m %s\033[0m\n" "${3-}$func_name" "$func_description"
     fi
   done <<<"$marks_and_func_first_lines"
   echo
@@ -129,7 +131,7 @@ function usage { ## print common usage instructions for Xfile
 # ---------- Dispatch ----------
 
 function begin_xfile_task { ## Xfile task starting point, should be called after function declarations (Xfile last line)
-  local task_name=${_SCRIPT_ARGS_ARR[0]} child_idx
+  local task_name=${_SCRIPT_ARGS_ARR[0]-} child_idx=
 
   if value_in_list "$task_name" "" help --help -h; then
     help 2>/dev/null
@@ -137,7 +139,7 @@ function begin_xfile_task { ## Xfile task starting point, should be called after
   fi
 
   if task_declared "$task_name" 2>/dev/null; then
-    if [ -n "$_X_TASK_STACK_STR" ]; then
+    if [ -n "${_X_TASK_STACK_STR-}" ]; then
       # result code logged outside, avoid trap overhead
       "${_SCRIPT_ARGS_ARR[@]}"
       return $?
@@ -157,13 +159,13 @@ function begin_xfile_task { ## Xfile task starting point, should be called after
 }
 
 function task { ## Call declared function, use "$@" as _SCRIPT_ARGS_ARR inside
-  local _SCRIPT_ARGS_ARR=("$@") task_name=$1 child_idx old_X_TASK_STACK_BASH_SUBSHELL
+  local _SCRIPT_ARGS_ARR=("$@") task_name=${1-} child_idx= old_X_TASK_STACK_BASH_SUBSHELL=
 
   if task_declared "$task_name" 2>/dev/null; then
     if [ "$_X_TASK_STACK_BASH_SUBSHELL" != "$BASH_SUBSHELL" ]; then
       # task call inside new subshell shall log only subshell tasks stack part
       log_warn "Detected task call from subshell – $BASH_SUBSHELL." \
-        "'task' called inside of '${FUNCNAME[1]}'"
+        "'task' called inside of '${FUNCNAME[1]-}'"
       _X_TASK_STACK_LENGTH_IN_SUBSHELL=0
       old_X_TASK_STACK_BASH_SUBSHELL=$_X_TASK_STACK_BASH_SUBSHELL
       _X_TASK_STACK_BASH_SUBSHELL=$BASH_SUBSHELL
@@ -194,7 +196,7 @@ _task_exit_trap() {
   fi
 
   local count=$_X_TASK_STACK_LENGTH_IN_SUBSHELL
-  _log_move_from_task "$1" "$2"
+  _log_move_from_task "$1" "${2-}"
   (( count-- ))
 
   while (( count > 0 )); do
@@ -206,11 +208,11 @@ _task_exit_trap() {
 }
 
 function process { ## run task (as new bash process) passing call args
-  local _SCRIPT_ARGS_ARR=("$@") task_name=$1 child_idx
+  local _SCRIPT_ARGS_ARR=("$@") task_name=${1-} child_idx=
 
   if task_declared "$task_name" 2>/dev/null; then
     _log_move_to_task "$task_name" '(process)'
-    local _X_FAILED_COMMAND
+    local _X_FAILED_COMMAND=
     _cache_failed_command_for_logging "$@"
     local code=0
     # will call: same Xfile as _new process_ -> begin_xfile_task -> func call -> ...
@@ -229,7 +231,7 @@ function process { ## run task (as new bash process) passing call args
 
 _task_in_child() { ## ## Private API. Runs task in child, task should checked to be declared beforehand
   _log_move_to_task "$2" "[${1##*/}]"
-  local _X_FAILED_COMMAND
+  local _X_FAILED_COMMAND=
   _cache_failed_command_for_logging "${@:2}"
   local code=0
   _X_CALLED_FROM_XFILE_OR_CHILD=true THIS_XFILE_PATH="$1" \
@@ -257,7 +259,7 @@ function task_declared { ## returns error code if $1 is not a declared as functi
 }
 
 _log_x_task_is_undeclared() {
-  log_error "🤔 No task named: '$1' in this Xfile or linked children!" \
+  log_error "🤔 No task named: '${1-}' in this Xfile or linked children!" \
     'Maybe misspelled?' \
     'Try: x help' \
     'Call args:' \
@@ -267,11 +269,11 @@ _log_x_task_is_undeclared() {
 _log_move_to_task() { ## Private API. Handles CALL STACK
   local new_part=$1
 
-  if [ -n "$2" ]; then
+  if [ -n "${2-}" ]; then
     new_part="$2 $new_part"
   fi
 
-  if [ -z "$_X_TASK_STACK_STR" ]; then
+  if [ -z "${_X_TASK_STACK_STR-}" ]; then
     printf "🚀 \e[34mdo: %s\e(B\e[m\n" "$new_part" 1>&2
     _X_TASK_STACK_STR=$new_part
   else
@@ -283,9 +285,9 @@ _log_move_to_task() { ## Private API. Handles CALL STACK
 }
 
 _log_move_from_task() { ## Private API. Handles CALL STACK
-  local code=$1 failed_command=$2
+  local code=$1 failed_command=${2-}
 
-  if [[ $_X_TASK_STACK_STR == *' > '* ]]; then
+  if [[ "${_X_TASK_STACK_STR-}" == *' > '* ]]; then
     local just_finished_task
     just_finished_task=${_X_TASK_STACK_STR##*' > '}
     _X_TASK_STACK_STR=${_X_TASK_STACK_STR%' > '*}
@@ -325,6 +327,7 @@ function load_source { ## source $1, capture path for help
     return 14
   fi
   _LOADED_SOURCE_FILES+=("$1")
+  # shellcheck disable=SC1090 # dynamic path by design
   source "$1"
 }
 
@@ -334,6 +337,7 @@ function load_optional_source { ## source $1 if file exist, capture path for hel
     return 0
   fi
   _LOADED_SOURCE_FILES+=("$1")
+  # shellcheck disable=SC1090 # dynamic path by design
   source "$1"
 }
 
@@ -350,18 +354,18 @@ impl:task_args_in_loaded_sources() { ## list $1 task args from first match in lo
 }
 
 show_task_names_from_loaded_sources() {
-  local source_path
-
-  for source_path in "${_LOADED_SOURCE_FILES[@]}"; do
+  local source_path i
+  for ((i = 0; i < ${#_LOADED_SOURCE_FILES[@]}; i++)); do
+    source_path=${_LOADED_SOURCE_FILES[$i]}
     show_task_names_from "$source_path"
   done
 }
 
 show_tasks_from_loaded_sources() {
-  local source_path
-
-  for source_path in "${_LOADED_SOURCE_FILES[@]}"; do
-    show_tasks_from "$source_path" "$1" "$2"
+  local source_path i
+  for ((i = 0; i < ${#_LOADED_SOURCE_FILES[@]}; i++)); do
+    source_path=${_LOADED_SOURCE_FILES[$i]}
+    show_tasks_from "$source_path" "${1-}" "${2-}"
   done
 }
 
@@ -374,7 +378,7 @@ function link_child_xfile { ## make child Xfile tasks executable from this Xfile
     return 17
   fi
   local child_path=$1
-  local child_prefix=$2
+  local child_prefix=${2-}
   local child_task_names=''
   if [ $# -gt 2 ]; then
     shift
@@ -503,7 +507,7 @@ show_tasks_from_linked_children() { ## $1 – this Xfile prefix in parent Xfile
     child_path=${_LINKED_XFILE_CHILDREN[$i]}
     child_prefix=${_LINKED_XFILE_CHILDREN[(( i + 1 ))]}
 
-    _call_child_impl_task "$child_path" show_tasks '' "$1$child_prefix"
+    _call_child_impl_task "$child_path" show_tasks '' "${1-}$child_prefix"
   done
 }
 
@@ -532,19 +536,20 @@ impl:install_xfile() {
 }
 
 function xfile_init_load() { ## load sources and Xfile sample to $1 dir from $2 git ref
-  if [ -z "$1" ]; then return 3; fi
+  if [ -z "${1-}" ]; then return 3; fi
 
   local caller_dir=$PWD
-  cd "$1"
-  export XFILE_REF=${2:-7.0.1}
+  cd "$1" || return $?
+  export XFILE_REF=${2:-main}
 
   process try_load_xfile_from_release_archive || process try_load_xfile_from_ref || {
     log_error "Failed to install Xfile $XFILE_REF to:" "$1"
+    cd "$caller_dir" || true
     return 9
   }
 
   log_success "Installed Xfile $XFILE_REF to:" "$1"
-  cd "$caller_dir"
+  cd "$caller_dir" || return $?
 }
 
 try_load_xfile_from_release_archive() {
@@ -573,10 +578,10 @@ try_load_xfile_from_ref() {
 }
 
 function xfile_init_copy() { ## copy sources and Xfile sample to $1 dir
-  if [ -z "$1" ]; then return 3; fi
+  if [ -z "${1-}" ]; then return 3; fi
 
   local caller_dir=$PWD
-  cd "$1"
+  cd "$1" || return $?
   rm -rf Xfile_source
   mkdir -p Xfile_source
 
@@ -585,7 +590,7 @@ function xfile_init_copy() { ## copy sources and Xfile sample to $1 dir
     cp "$GIT_ROOT/Xfile_source/template.sh" "$1/Xfile"
   fi
 
-  cd "$caller_dir"
+  cd "$caller_dir" || return $?
 }
 
 { ## Set important Xfile implementation ENV. Performed at Xfile start while impl is sourced. Should not be called manually
@@ -597,11 +602,11 @@ function xfile_init_copy() { ## copy sources and Xfile sample to $1 dir
 
   export ROOT_XFILE_PATH=${ROOT_XFILE_PATH:-"$GIT_ROOT/Xfile"} # expected absolute path
 
-  if [ -n "$_X_CALLED_FROM_XFILE_OR_CHILD" ]; then
+  if [ -n "${_X_CALLED_FROM_XFILE_OR_CHILD-}" ]; then
     # Spawned from Xfile or child with 'task' or '_call_child_impl_task', they states this flag
     # Unset to allow task sub processes call root Xfile by $ROOT_XFILE_PATH without this flag
     unset _X_CALLED_FROM_XFILE_OR_CHILD
-    if [ -z "$THIS_XFILE_PATH" ]; then
+    if [ -z "${THIS_XFILE_PATH-}" ]; then
       log_error "THIS_XFILE_PATH found empty, but expected to be filled from parent Xfile side!"
       return 9
     fi
