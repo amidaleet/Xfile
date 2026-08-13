@@ -87,7 +87,7 @@ Sample code:
 
 For fresh start in your repository run script:
 ```sh
-(export XFILE_REF='7.0.1'; bash <<<$(curl -fsSL "https://raw.githubusercontent.com/amidaleet/Xfile/${XFILE_REF}/Xfile_source/setup.sh"))
+(export XFILE_REF='7.1.0'; bash <<<$(curl -fsSL "https://raw.githubusercontent.com/amidaleet/Xfile/${XFILE_REF}/Xfile_source/setup.sh"))
 ```
 
 Or you can clone this **this** repository and call command from it's root dir.
