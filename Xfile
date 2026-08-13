@@ -2,7 +2,7 @@
 
 set -eo pipefail
 
-if [ -z "$_OUTPUT_LINE_BUFFERED" ]; then
+if [ -z "${_OUTPUT_LINE_BUFFERED:-}" ]; then
   export _OUTPUT_LINE_BUFFERED=true
   if command -v stdbuf >/dev/null; then exec stdbuf -oL -eL "$0" "$@"; fi
 fi
@@ -14,7 +14,9 @@ export SCRIPTS_FOLDER="$GIT_ROOT/tools/sh"
 source "$GIT_ROOT/Xfile_source/impl.sh"
 
 export IS_CI=false
-if [ -n "$JENKINS_HOME" ] || [ -n "$JENKINS_URL" ]; then IS_CI=true; fi
+if var_is_true CI; then
+  IS_CI=true
+fi
 
 export FASTLANE_SKIP_UPDATE_CHECK=1
 export FASTLANE_HIDE_CHANGELOG=1

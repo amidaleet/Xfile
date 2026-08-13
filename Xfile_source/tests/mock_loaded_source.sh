@@ -27,7 +27,7 @@ loaded_source_stack_2() {
 loaded_source_stack_3() {
   puts "started loaded_source_stack_3"
 
-  if [ -n "$MOCKED_END_CODE" ]; then
+  if [ -n "${MOCKED_END_CODE-}" ]; then
     return_code "$MOCKED_END_CODE"
   fi
 

@@ -35,7 +35,7 @@ function child_stack_1_cached {
 child_stack_2() {
   log "child_stack_2 start" "$@"
 
-  if [ -n "$MOCKED_END_CODE" ]; then
+  if [ -n "${MOCKED_END_CODE-}" ]; then
     return_code "$MOCKED_END_CODE"
   fi
 

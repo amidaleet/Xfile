@@ -18,12 +18,14 @@ function test_xfile() { ## Test Xfile implementation (arguments handling)
     task test_args_readers
     task test_arr_to_str
     task test_read_arr
+    task test_nounset_mode
     task test_xfile_children
     task test_xfile_dispatch
 
-    # Skip multiple level nesting test because of flaky output lines order due to race between 2 tee
+    # forward_out_and_err_to_dir: process-subst tee without wait — nested levels flake; keep one_level.
+    # run_with_status_marker: synced via mkfifo+wait — exercise full nested path.
     task test_forward_out_and_err_to_dir_one_level
-    task test_run_with_status_marker_one_level
+    task test_run_with_status_marker
 
     # - Note:
     # '$(...)' does not inherit caller shell options.
@@ -90,8 +92,8 @@ test_var_is_true() {
 }
 
 test_assert_defined() {
-  local value_one=1
-  local value_two=work
+  # shellcheck disable=SC2034 # names passed to assert_defined (indirect \${!name})
+  local value_one=1 value_two=work
   local fails_count_before_this_tests=$TEST_FAILS_COUNT
 
   if ! assert_defined value_one value_two 2>/dev/null; then
@@ -130,7 +132,7 @@ test_args_readers() {
 }
 
 assert_opt_and_args_read() {
-  local WORD TEXT VERSION BETA_NUMBER
+  local WORD= TEXT= VERSION= BETA_NUMBER=
   read_opt -w --word WORD
   read_opt -t --text TEXT
   read_args VERSION BETA_NUMBER
@@ -207,7 +209,7 @@ test_read_arr() {
 }
 
 assert_arr_read() {
-  local idx myarray
+  local idx= myarray=()
   read_arr -a myarray "$3"
 
   if [ "${#myarray[@]}" != "${#expected_arr[@]}" ]; then
@@ -223,6 +225,59 @@ assert_arr_read() {
     fi
     (( ++idx ))
   done
+}
+
+test_nounset_mode() { # helper of test_xfile — not a public task
+  local fails_count_before_this_tests=$TEST_FAILS_COUNT
+  local bash_bin nounset_err nounset_xlib_out
+
+  for bash_bin in bash /bin/bash; do
+    command -v "$bash_bin" >/dev/null || continue
+    if ! nounset_err=$("$bash_bin" -u "$GIT_ROOT/Xfile_source/tests/mock_root.sh" help 2>&1 >/dev/null); then
+      puts "test_nounset_mode: $bash_bin mock_root help failed under set -u"
+      puts "$nounset_err"
+      ((++TEST_FAILS_COUNT))
+    fi
+    if ! nounset_err=$("$bash_bin" -u "$GIT_ROOT/Xfile_source/tests/link_root.sh" 2>&1 >/dev/null); then
+      puts "test_nounset_mode: $bash_bin link_root (no args) failed under set -u"
+      puts "$nounset_err"
+      ((++TEST_FAILS_COUNT))
+    fi
+    if ! nounset_err=$("$bash_bin" -u "$GIT_ROOT/Xfile_source/tests/mock_root.sh" test_tasks_chain_in_root 2>&1 >/dev/null); then
+      puts "test_nounset_mode: $bash_bin mock_root test_tasks_chain_in_root failed under set -u"
+      puts "$nounset_err"
+      ((++TEST_FAILS_COUNT))
+    fi
+  done
+
+  nounset_xlib_out=$(
+    set -u
+    if assert_defined not_present_value 2>/dev/null; then
+      puts 'test_nounset_mode: assert_defined should fail on unset'
+      exit 1
+    fi
+    if var_is_true not_present_value; then
+      puts 'test_nounset_mode: var_is_true should be false on unset'
+      exit 1
+    fi
+    unset UNSET_ARG UNSET_OPT
+    read_args UNSET_ARG
+    read_opt --missing UNSET_OPT
+    if [ -n "$UNSET_ARG" ] || [ -n "$UNSET_OPT" ]; then
+      puts 'test_nounset_mode: read_args/read_opt should leave missing values empty'
+      exit 1
+    fi
+    echo OK
+  )
+  if [ $? -ne 0 ] || [[ "${nounset_xlib_out-}" != *OK* ]]; then
+    puts "test_nounset_mode: in-process xlib checks failed under set -u"
+    puts "${nounset_xlib_out-}"
+    ((++TEST_FAILS_COUNT))
+  fi
+
+  fail_if_new_assertions_has_failed || return $?
+
+  log_success "Xfile works under set -u!"
 }
 
 test_arr_to_str() {
@@ -362,7 +417,7 @@ assert_mock_root_err() {
   fi
 }
 
-function test_xfile_children() { ## Check how helper tasks works with link_child_xfile
+test_xfile_children() { # helper of test_xfile — not a public task
   local fails_count_before_this_tests=$TEST_FAILS_COUNT
 
   assert_link_root_output main <<<'main in child_zero'
@@ -407,7 +462,7 @@ HEREDOC
   log_success "Xfile children links works as expected!"
 }
 
-function test_xfile_dispatch() { ## Check how tasks are called and logged
+test_xfile_dispatch() { # helper of test_xfile — not a public task
   local fails_count_before_this_tests=$TEST_FAILS_COUNT
 
   assert_mock_root_output_and_err test_tasks_chain_in_root <<'HEREDOC'
@@ -508,7 +563,6 @@ process root_stack_2 failed as expected, new process does not inherit disabled e
 ended test_process_in_logic_expression without err
 👍 [36mdone: test_process_in_logic_expression(B[m
 HEREDOC
-
 
   assert_mock_root_output_and_err test_tasks_chain_in_loaded_source <<'HEREDOC'
 🚀 [34mdo: test_tasks_chain_in_loaded_source(B[m
@@ -657,7 +711,7 @@ HEREDOC
 # - Note:
 # 1) multiple tee may mix up lines, get err and out separately
 # 2) tasks inherit streams forwarding, so caller task tail is in the logs of child task
-function test_forward_out_and_err_to_dir() { ## Check how streams are being proxied
+test_forward_out_and_err_to_dir() { # helper of test_xfile — not a public task
   local fails_count_before_this_tests=$TEST_FAILS_COUNT
 
   assert_mock_root_output test_forward_out_and_err_to_dir <<'HEREDOC'
@@ -749,7 +803,7 @@ HEREDOC
   log_success "forward_out_and_err_to_dir works as expected!"
 }
 
-function test_forward_out_and_err_to_dir_one_level() { ## Check how streams are being proxied
+test_forward_out_and_err_to_dir_one_level() { # helper of test_xfile — not a public task
   local fails_count_before_this_tests=$TEST_FAILS_COUNT
 
   assert_mock_root_output test_forward_out_and_err_to_dir_one_level <<'HEREDOC'
@@ -799,7 +853,7 @@ HEREDOC
 
 # - Note:
 # 1) multiple tee may mix up lines, get err and out separately
-function test_run_with_status_marker() { ## Check how streams are being proxied
+test_run_with_status_marker() { # helper of test_xfile — not a public task
   local fails_count_before_this_tests=$TEST_FAILS_COUNT
 
   assert_mock_root_output test_run_with_status_marker <<'HEREDOC'
@@ -865,48 +919,6 @@ HEREDOC
   fail_if_new_assertions_has_failed || return $?
 
   log_success "test_run_with_status_marker works as expected!"
-}
-
-function test_run_with_status_marker_one_level() { ## Check how streams are being proxied
-  local fails_count_before_this_tests=$TEST_FAILS_COUNT
-
-  assert_mock_root_output test_run_with_status_marker_one_level <<'HEREDOC'
-out 1 in test_run_with_status_marker_one_level
-out in bar
-out 2 in test_run_with_status_marker_one_level
-HEREDOC
-
-  assert_mock_root_err test_run_with_status_marker_one_level <<'HEREDOC'
-🚀 [34mdo: test_run_with_status_marker_one_level(B[m
-started test_run_with_status_marker_one_level
-in test_run_with_status_marker_one_level
-💁 [35mForwarding output and error streams:(B[m
-- of: task bar
-- to: ./output/xfile_tests/test_run_with_status_marker_one_level/bar
-💁 [35mWill create 'success' file in forwarding dir, unless command fails(B[m
-🌚 [34min: test_run_with_status_marker_one_level > bar(B[m
-in bar
-ended bar
-🌝 [36mout: test_run_with_status_marker_one_level < bar(B[m
-in test_run_with_status_marker_one_level after bar
-ended test_run_with_status_marker_one_level
-👍 [36mdone: test_run_with_status_marker_one_level(B[m
-HEREDOC
-
-  assert_cmd_output_and_err cat "$GIT_ROOT/output/xfile_tests/test_run_with_status_marker_one_level/bar/out.log" <<'HEREDOC'
-out in bar
-HEREDOC
-
-  assert_cmd_output_and_err cat "$GIT_ROOT/output/xfile_tests/test_run_with_status_marker_one_level/bar/err.log" <<'HEREDOC'
-🌚 [34min: test_run_with_status_marker_one_level > bar(B[m
-in bar
-ended bar
-🌝 [36mout: test_run_with_status_marker_one_level < bar(B[m
-HEREDOC
-
-  fail_if_new_assertions_has_failed || return $?
-
-  log_success "test_run_with_status_marker_one_level works as expected!"
 }
 
 begin_xfile_task
