@@ -49,8 +49,12 @@
     p { margin: 0 0 1rem; }
     .dim { color: var(--dim); }
     a { color: var(--acc); }
-    pre {
+    .snippet {
+      position: relative;
       margin: 1rem 0 1.5rem;
+    }
+    pre {
+      margin: 0;
       padding: 0.85rem 1rem;
       overflow-x: auto;
       border: 1px solid var(--line);
@@ -58,6 +62,24 @@
       color: var(--acc);
     }
     code { font: inherit; }
+    .copy {
+      position: absolute;
+      bottom: 0.5rem;
+      right: 0.5rem;
+      padding: 0.2rem 0.55rem;
+      font: inherit;
+      font-size: 0.75rem;
+      color: var(--dim);
+      background: #071108;
+      border: 1px solid var(--line);
+      cursor: pointer;
+    }
+    .copy:hover,
+    .copy:focus-visible {
+      color: var(--acc);
+      outline: none;
+    }
+    .copy[data-copied="true"] { color: var(--acc); }
     nav { margin-top: 1.5rem; }
     nav a { margin-right: 1.25rem; }
   </style>
@@ -69,15 +91,36 @@
     <p>Simple <code>bash</code> template for repository scripts: tasks, args, help and shell completion. A Makefile alternative, not a YAML Taskfile.</p>
     <p class="dim">Why run <code>bash → Makefile → bash</code>, if just <code>bash</code> is possible?</p>
     <p>Install into a repo:</p>
-    <pre><code>curl -fsSL "https://raw.githubusercontent.com/amidaleet/Xfile/7.1.1/Xfile_source/setup.sh" -o setup.sh
+    <div class="snippet">
+      <pre><code>curl -fsSL "https://raw.githubusercontent.com/amidaleet/Xfile/7.1.1/Xfile_source/setup.sh" -o setup.sh
 chmod +x setup.sh
 XFILE_REF='7.1.1' ./setup.sh
 rm -f setup.sh</code></pre>
+      <button type="button" class="copy" data-copy>Copy</button>
+    </div>
     <nav>
       <a href="https://github.com/amidaleet/Xfile">GitHub</a>
       <a href="https://github.com/amidaleet/Xfile#readme">README</a>
       <a href="https://github.com/amidaleet/Xfile/releases/tag/7.1.1">7.1.1</a>
+      <a href="https://github.com/amidaleet">Author</a>
     </nav>
   </main>
+  <script>
+    document.querySelectorAll("[data-copy]").forEach(function (button) {
+      var snippet = button.closest(".snippet");
+      var code = snippet && snippet.querySelector("pre code");
+      if (!code) return;
+      button.addEventListener("click", function () {
+        navigator.clipboard.writeText(code.textContent).then(function () {
+          button.dataset.copied = "true";
+          button.textContent = "Copied";
+          setTimeout(function () {
+            button.dataset.copied = "false";
+            button.textContent = "Copy";
+          }, 1500);
+        });
+      });
+    });
+  </script>
 </body>
 </html>
