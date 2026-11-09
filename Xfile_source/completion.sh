@@ -4,6 +4,7 @@ function bind_xfile_completion() {
     if [[ $(type complete) == "complete not found" ]]; then
       ## using pure zsh built-in
       function _zsh_xfile_completion() {
+        # shellcheck disable=SC2154 # zsh: words is a completion builtin array
         if (( ${#words} > 2 )); then
           # 2 or more args: suggest task_args for the given task name
           local task_args

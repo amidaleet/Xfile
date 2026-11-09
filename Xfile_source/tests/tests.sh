@@ -23,9 +23,9 @@ function test_xfile() { ## Test Xfile implementation (arguments handling)
     task test_xfile_dispatch
 
     # forward_out_and_err_to_dir: process-subst tee without wait — nested levels flake; keep one_level.
-    # run_with_status_marker: synced via mkfifo+wait — exercise full nested path.
     task test_forward_out_and_err_to_dir_one_level
     task test_run_with_status_marker
+    task test_run_with_status_marker_does_not_hide_error
 
     # - Note:
     # '$(...)' does not inherit caller shell options.
@@ -132,7 +132,7 @@ test_args_readers() {
 }
 
 assert_opt_and_args_read() {
-  local WORD= TEXT= VERSION= BETA_NUMBER=
+  local WORD='' TEXT='' VERSION='' BETA_NUMBER=''
   read_opt -w --word WORD
   read_opt -t --text TEXT
   read_args VERSION BETA_NUMBER
@@ -209,7 +209,7 @@ test_read_arr() {
 }
 
 assert_arr_read() {
-  local idx= myarray=()
+  local idx='' myarray=()
   read_arr -a myarray "$3"
 
   if [ "${#myarray[@]}" != "${#expected_arr[@]}" ]; then
@@ -851,19 +851,20 @@ HEREDOC
   log_success "test_forward_out_and_err_to_dir_one_level works as expected!"
 }
 
-# - Note:
-# 1) multiple tee may mix up lines, get err and out separately
 test_run_with_status_marker() { # helper of test_xfile — not a public task
   local fails_count_before_this_tests=$TEST_FAILS_COUNT
+  local test_case=${FUNCNAME[0]}
 
-  assert_mock_root_output test_run_with_status_marker <<'HEREDOC'
+  rm -rf "$GIT_ROOT/output/xfile_tests/$test_case" || true
+
+  assert_mock_root_output "$test_case" <<'HEREDOC'
 out 1 in test_run_with_status_marker
 out in foo
 out in bar
 out 2 in test_run_with_status_marker
 HEREDOC
 
-  assert_mock_root_err test_run_with_status_marker <<'HEREDOC'
+  assert_mock_root_err "$test_case" <<'HEREDOC'
 🚀 [34mdo: test_run_with_status_marker(B[m
 started test_run_with_status_marker
 in test_run_with_status_marker
@@ -887,12 +888,12 @@ ended test_run_with_status_marker
 👍 [36mdone: test_run_with_status_marker(B[m
 HEREDOC
 
-  assert_cmd_output_and_err cat "$GIT_ROOT/output/xfile_tests/test_run_with_status_marker/bar/out.log" <<'HEREDOC'
+  assert_cmd_output_and_err cat "$GIT_ROOT/output/xfile_tests/$test_case/bar/out.log" <<'HEREDOC'
 out in foo
 out in bar
 HEREDOC
 
-  assert_cmd_output_and_err cat "$GIT_ROOT/output/xfile_tests/test_run_with_status_marker/bar/err.log" <<'HEREDOC'
+  assert_cmd_output_and_err cat "$GIT_ROOT/output/xfile_tests/$test_case/bar/err.log" <<'HEREDOC'
 🌚 [34min: test_run_with_status_marker > bar(B[m
 in bar
 💁 [35mForwarding output and error streams:(B[m
@@ -906,19 +907,62 @@ in bar after foo
 🌝 [36mout: test_run_with_status_marker < bar(B[m
 HEREDOC
 
-  assert_cmd_output_and_err cat "$GIT_ROOT/output/xfile_tests/test_run_with_status_marker/foo/out.log" <<'HEREDOC'
+  assert_cmd_output_and_err cat "$GIT_ROOT/output/xfile_tests/$test_case/foo/out.log" <<'HEREDOC'
 out in foo
 HEREDOC
 
-  assert_cmd_output_and_err cat "$GIT_ROOT/output/xfile_tests/test_run_with_status_marker/foo/err.log" <<'HEREDOC'
+  assert_cmd_output_and_err cat "$GIT_ROOT/output/xfile_tests/$test_case/foo/err.log" <<'HEREDOC'
 🌚 [34min: test_run_with_status_marker > bar > foo(B[m
 in foo
 🌝 [36mout: test_run_with_status_marker > bar < foo(B[m
 HEREDOC
 
+  if [[ ! -f "$GIT_ROOT/output/xfile_tests/$test_case/bar/success" ]]; then
+    puts "$test_case: success file should be created as wrapped task succeded!"
+    ((++TEST_FAILS_COUNT))
+  fi
+
+  if [[ ! -f "$GIT_ROOT/output/xfile_tests/$test_case/foo/success" ]]; then
+    puts "$test_case: success file should be created as wrapped task succeded!"
+    ((++TEST_FAILS_COUNT))
+  fi
+
   fail_if_new_assertions_has_failed || return $?
 
-  log_success "test_run_with_status_marker works as expected!"
+  log_success "$test_case works as expected!"
+}
+
+test_run_with_status_marker_does_not_hide_error() { # helper of test_xfile — not a public task
+  local fails_count_before_this_tests=$TEST_FAILS_COUNT
+  local test_case=${FUNCNAME[0]}
+
+  rm -rf "$GIT_ROOT/output/xfile_tests/$test_case" || true
+
+  assert_mock_root_output "$test_case" <<'HEREDOC'
+out 1 in test_run_with_status_marker_does_not_hide_error
+out in foo
+HEREDOC
+
+# error and output streams order from bar and foo got mixed due to multiple wrapped tee, so do not assert it
+
+  if "$GIT_ROOT/Xfile_source/tests/mock_root.sh" "$test_case" &>/dev/null; then
+    puts "$test_case: command sould fail when wrapped task has failed!"
+    ((++TEST_FAILS_COUNT))
+  fi
+
+  if [[ -f "$GIT_ROOT/output/xfile_tests/$test_case/bar/success" ]]; then
+    puts "$test_case: success file should not be created if wrapped task has failed!"
+    ((++TEST_FAILS_COUNT))
+  fi
+
+  if [[ -f "$GIT_ROOT/output/xfile_tests/$test_case/foo/success" ]]; then
+    puts "$test_case: success file should not be created if wrapped task has failed!"
+    ((++TEST_FAILS_COUNT))
+  fi
+
+  fail_if_new_assertions_has_failed || return $?
+
+  log_success "$test_case works as expected!"
 }
 
 begin_xfile_task

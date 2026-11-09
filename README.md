@@ -89,9 +89,9 @@ cd examples/ios
 
 For fresh start in your repository, download `setup.sh`, inspect it, then run:
 ```sh
-curl -fsSL "https://raw.githubusercontent.com/amidaleet/Xfile/7.1.1/Xfile_source/setup.sh" -o setup.sh
+curl -fsSL "https://raw.githubusercontent.com/amidaleet/Xfile/7.1.2/Xfile_source/setup.sh" -o setup.sh
 chmod +x setup.sh
-XFILE_REF='7.1.1' ./setup.sh
+XFILE_REF='7.1.2' ./setup.sh
 rm -f setup.sh
 ```
 
@@ -104,13 +104,13 @@ cd Xfile-repo # move to this repo root
 
 ### Upgrade
 
-To bump an existing install (for example 7.0.1 → 7.1.1):
+To bump an existing install (for example 7.0.1 → 7.1.2):
 
 ```sh
-./Xfile xfile_init_load "$PWD" 7.1.1
+./Xfile xfile_init_load "$PWD" 7.1.2
 ```
 
-Or re-run the [install steps](#xfile-template) (`XFILE_REF='7.1.1'`). `setup.sh` defaults to newest version.
+Or re-run the [install steps](#xfile-template) (`XFILE_REF='7.1.2'`). `setup.sh` defaults to newest version.
 
 `xfile_init_load` refreshes `Xfile_source`; it does not overwrite an existing `./Xfile`.
 

@@ -99,6 +99,33 @@ function test_run_with_status_marker {
   log 'ended test_run_with_status_marker'
 }
 
+function test_run_with_status_marker_does_not_hide_error {
+  # shellcheck disable=SC2329
+  function bar {
+    log 'in bar'
+    run_with_status_marker "$GIT_ROOT/output/xfile_tests/test_run_with_status_marker_does_not_hide_error/foo" \
+      task foo
+    puts 'out in bar'
+    log 'in bar after foo'
+  }
+
+  # shellcheck disable=SC2329
+  function foo {
+    log 'Will fail in foo'
+    puts 'out in foo'
+    return 3
+  }
+
+  log 'started test_run_with_status_marker_does_not_hide_error'
+
+  log 'in test_run_with_status_marker_does_not_hide_error'
+
+  puts 'out 1 in test_run_with_status_marker_does_not_hide_error'
+  run_with_status_marker "$GIT_ROOT/output/xfile_tests/test_run_with_status_marker_does_not_hide_error/bar" \
+    task bar
+  puts 'SHOULD NOT BE PRINTED!'
+}
+
 function test_tasks_chain_from_root_to_child {
   task child_stack_1 'from test_tasks_chain_from_root_to_child'
 }

@@ -264,41 +264,41 @@ function run_with_status_marker { ## proxy given command stdout and stderr strea
     return 43
   fi
 
-  if [ -z "$1" ]; then
+  local p="$1"
+
+  if [ -z "$p" ]; then
     log_error 'run_with_status_marker failed:' \
       "Missing output dir path in \$1!" \
       ''
     return 3
   fi
 
-  local p="$1"
-
   log_note "Forwarding output and error streams:" \
     "- of: $(arr_to_str ' ' "${@:2}")" \
     "- to: ./${p##"${GIT_ROOT-}/"}"
   log_note "Will create 'success' file in forwarding dir, unless command fails"
 
-  rm -rf "$1" || true
-  mkdir -p "$1" || return $?
+  rm -rf "$p" || true
+  mkdir -p "$p" || return $?
 
-  # M1: touch success only on exit 0; propagate status.
-  # M2: named FIFOs + wait on tee PIDs — process-subst `tee` without wait
-  # races past `done:` / leaves empty logs (bash job-wait is unreliable for >()).
-  # FIFOs live under $p (same scratch dir as the logs); cleaned with rm -rf above.
-  local status=0
-  local out_fifo="$p/out.fifo" err_fifo="$p/err.fifo" out_pid= err_pid=
+  local status=0 out_fifo="$p/out.fifo" err_fifo="$p/err.fifo" out_pid='' err_pid=''
+
   mkfifo "$out_fifo" "$err_fifo" || return $?
   tee "$p/out.log" < "$out_fifo" &
   out_pid=$!
   tee "$p/err.log" < "$err_fifo" >&2 &
   err_pid=$!
-  "${@:2}" > "$out_fifo" 2> "$err_fifo" || status=$?
+
+  "${@:2}" > "$out_fifo" 2> "$err_fifo"
+  status=$?
+  if [[ "$status" -eq 0 ]]; then
+    touch "$p/success"
+  fi
+
   # bash 3.2: wait accepts a single pid (multi-pid wait is newer).
   wait "$out_pid" || true
   wait "$err_pid" || true
   rm -f "$out_fifo" "$err_fifo"
-  if [ "$status" -eq 0 ]; then
-    touch "$p/success"
-  fi
+
   return "$status"
 }

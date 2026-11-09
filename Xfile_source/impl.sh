@@ -90,7 +90,7 @@ show_tasks_from() { ## print task descriptions list from $1 file, $2 – header 
     return 0
   fi
 
-  local line func_name= func_description=
+  local line func_name='' func_description=''
   while IFS= read -r line; do
     if [[ "$line" == '# ----------'* ]]; then
       line=${line#'# ---------- '}
@@ -131,7 +131,7 @@ function usage { ## print common usage instructions for Xfile
 # ---------- Dispatch ----------
 
 function begin_xfile_task { ## Xfile task starting point, should be called after function declarations (Xfile last line)
-  local task_name=${_SCRIPT_ARGS_ARR[0]-} child_idx=
+  local task_name=${_SCRIPT_ARGS_ARR[0]-} child_idx=''
 
   if value_in_list "$task_name" "" help --help -h; then
     help 2>/dev/null
@@ -159,7 +159,7 @@ function begin_xfile_task { ## Xfile task starting point, should be called after
 }
 
 function task { ## Call declared function, use "$@" as _SCRIPT_ARGS_ARR inside
-  local _SCRIPT_ARGS_ARR=("$@") task_name=${1-} child_idx= old_X_TASK_STACK_BASH_SUBSHELL=
+  local _SCRIPT_ARGS_ARR=("$@") task_name=${1-} child_idx='' old_X_TASK_STACK_BASH_SUBSHELL=''
 
   if task_declared "$task_name" 2>/dev/null; then
     if [ "$_X_TASK_STACK_BASH_SUBSHELL" != "$BASH_SUBSHELL" ]; then
@@ -208,7 +208,7 @@ _task_exit_trap() {
 }
 
 function process { ## run task (as new bash process) passing call args
-  local _SCRIPT_ARGS_ARR=("$@") task_name=${1-} child_idx=
+  local _SCRIPT_ARGS_ARR=("$@") task_name=${1-} child_idx=''
 
   if task_declared "$task_name" 2>/dev/null; then
     _log_move_to_task "$task_name" '(process)'
@@ -540,7 +540,7 @@ function xfile_init_load() { ## load sources and Xfile sample to $1 dir from $2 
 
   local caller_dir=$PWD
   cd "$1" || return $?
-  export XFILE_REF=${2:-7.1.1}
+  export XFILE_REF=${2:-7.1.2}
 
   process try_load_xfile_from_release_archive || process try_load_xfile_from_ref || {
     log_error "Failed to install Xfile $XFILE_REF to:" "$1"
