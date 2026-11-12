@@ -281,24 +281,14 @@ function run_with_status_marker { ## proxy given command stdout and stderr strea
   rm -rf "$p" || true
   mkdir -p "$p" || return $?
 
-  local status=0 out_fifo="$p/out.fifo" err_fifo="$p/err.fifo" out_pid='' err_pid=''
-
-  mkfifo "$out_fifo" "$err_fifo" || return $?
-  tee "$p/out.log" < "$out_fifo" &
-  out_pid=$!
-  tee "$p/err.log" < "$err_fifo" >&2 &
-  err_pid=$!
-
-  "${@:2}" > "$out_fifo" 2> "$err_fifo"
+  local status
+  "${@:2}" \
+    1> >(tee "$p/out.log") \
+    2> >(tee "$p/err.log" >&2)
   status=$?
   if [[ "$status" -eq 0 ]]; then
     touch "$p/success"
   fi
-
-  # bash 3.2: wait accepts a single pid (multi-pid wait is newer).
-  wait "$out_pid" || true
-  wait "$err_pid" || true
-  rm -f "$out_fifo" "$err_fifo"
 
   return "$status"
 }
